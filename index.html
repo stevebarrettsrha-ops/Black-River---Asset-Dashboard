@@ -9924,6 +9924,71 @@
             return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
         }
 
+        // Initialize blank/default data for all stores when no data exists
+        async function initializeBlankData() {
+            let changed = false;
+
+            // Assets — persist empty array if nothing stored
+            if (!_dbGet(STORAGE_KEY) || !Array.isArray(_dbGet(STORAGE_KEY))) {
+                _dbSet(STORAGE_KEY, []);
+                changed = true;
+            }
+
+            // Audit trail — persist empty array if nothing stored
+            if (!_dbGet(AUDIT_STORAGE_KEY) || !Array.isArray(_dbGet(AUDIT_STORAGE_KEY))) {
+                _dbSet(AUDIT_STORAGE_KEY, []);
+                changed = true;
+            }
+
+            // Disposal records — persist empty array if nothing stored
+            if (!_dbGet(DISPOSAL_STORAGE_KEY) || !Array.isArray(_dbGet(DISPOSAL_STORAGE_KEY))) {
+                _dbSet(DISPOSAL_STORAGE_KEY, []);
+                changed = true;
+            }
+
+            // Deleted asset ID sets — persist empty arrays if nothing stored
+            if (!_dbGet(ASSET_DELETED_IDS_KEY)) {
+                _dbSet(ASSET_DELETED_IDS_KEY, []);
+                changed = true;
+            }
+            if (!_dbGet(DISPOSAL_DELETED_IDS_KEY)) {
+                _dbSet(DISPOSAL_DELETED_IDS_KEY, []);
+                changed = true;
+            }
+
+            // Departments — persist defaults if nothing stored
+            if (!localStorage.getItem(DEPARTMENTS_STORAGE_KEY)) {
+                try { localStorage.setItem(DEPARTMENTS_STORAGE_KEY, JSON.stringify(DEFAULT_DEPARTMENTS)); changed = true; } catch(e) {}
+            }
+
+            // Categories — persist defaults if nothing stored
+            if (!localStorage.getItem(CATEGORIES_STORAGE_KEY)) {
+                try { localStorage.setItem(CATEGORIES_STORAGE_KEY, JSON.stringify(DEFAULT_CATEGORIES)); changed = true; } catch(e) {}
+            }
+
+            // QR code registry — persist empty object if nothing stored
+            if (!localStorage.getItem('qrCodeRegistry')) {
+                try { localStorage.setItem('qrCodeRegistry', JSON.stringify({})); changed = true; } catch(e) {}
+            }
+
+            // Portal user accounts — persist empty array if nothing stored
+            if (!localStorage.getItem('portalUserAccounts')) {
+                try { localStorage.setItem('portalUserAccounts', '[]'); changed = true; } catch(e) {}
+            }
+
+            // Portal heading settings — persist null placeholder if nothing stored
+            if (!localStorage.getItem('portalHeadingSettings')) {
+                try { localStorage.setItem('portalHeadingSettings', 'null'); changed = true; } catch(e) {}
+            }
+
+            // Local user settings (2FA) — persist empty object if nothing stored
+            if (!localStorage.getItem('assetDashboardUserSettings')) {
+                try { localStorage.setItem('assetDashboardUserSettings', '{}'); changed = true; } catch(e) {}
+            }
+
+            if (changed) console.log('[Init] Blank data structures initialized for missing stores');
+        }
+
         // Initialize default admin user (Maurice Mullings) if no matching user exists
         async function initializeDefaultAdminUser() {
             const exists = localUsers.find(u => u.username.toLowerCase() === 'maurice mullings');
@@ -14246,8 +14311,10 @@
                 const stored = localStorage.getItem(DEPARTMENTS_STORAGE_KEY);
                 if (stored) {
                     const departments = JSON.parse(stored);
-                    return Array.isArray(departments) && departments.length > 0 ? departments : DEFAULT_DEPARTMENTS;
+                    if (Array.isArray(departments) && departments.length > 0) return departments;
                 }
+                // Nothing stored — persist defaults now
+                localStorage.setItem(DEPARTMENTS_STORAGE_KEY, JSON.stringify(DEFAULT_DEPARTMENTS));
                 return DEFAULT_DEPARTMENTS;
             } catch (error) {
                 console.error('Error loading departments:', error);
@@ -14313,8 +14380,10 @@
                 const stored = localStorage.getItem(CATEGORIES_STORAGE_KEY);
                 if (stored) {
                     const categories = JSON.parse(stored);
-                    return Array.isArray(categories) && categories.length > 0 ? categories : DEFAULT_CATEGORIES;
+                    if (Array.isArray(categories) && categories.length > 0) return categories;
                 }
+                // Nothing stored — persist defaults now
+                localStorage.setItem(CATEGORIES_STORAGE_KEY, JSON.stringify(DEFAULT_CATEGORIES));
                 return DEFAULT_CATEGORIES;
             } catch (error) {
                 console.error('Error loading categories:', error);
@@ -14875,6 +14944,8 @@
                     }
                     return assets;
                 }
+                // No assets found — persist empty array so store is initialized
+                _dbSet(STORAGE_KEY, []);
                 return [];
             } catch (error) {
                 console.error('Error loading assets:', error);
@@ -14910,7 +14981,10 @@
         function loadAuditFromStorage() {
             try {
                 const audit = _dbGet(AUDIT_STORAGE_KEY);
-                return Array.isArray(audit) ? audit : [];
+                if (Array.isArray(audit)) return audit;
+                // No audit found — persist empty array so store is initialized
+                _dbSet(AUDIT_STORAGE_KEY, []);
+                return [];
             } catch (error) {
                 console.error('Error loading audit:', error);
                 return [];
@@ -31269,6 +31343,9 @@
 
                 // Check if page was opened via QR code scan (asset parameter in URL)
                 checkForAssetParameter();
+
+                // Initialize blank data structures for any missing stores
+                await initializeBlankData();
 
                 // Migrate any plaintext passwords to hashed format
                 await migrateLocalUserPasswords();

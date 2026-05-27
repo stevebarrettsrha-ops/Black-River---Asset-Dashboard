@@ -9924,6 +9924,25 @@
             return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
         }
 
+        // Initialize default admin user (Maurice Mullings) if no matching user exists
+        async function initializeDefaultAdminUser() {
+            const exists = localUsers.find(u => u.username.toLowerCase() === 'maurice mullings');
+            if (!exists) {
+                const defaultUser = {
+                    id: 'user_default_admin',
+                    username: 'Maurice Mullings',
+                    displayName: 'Maurice Mullings',
+                    passwordHash: await hashPassword('Mnemonic1!'),
+                    role: 'Admin',
+                    requirePasswordChange: false,
+                    createdAt: new Date().toISOString()
+                };
+                localUsers.push(defaultUser);
+                localStorage.setItem('assetDashboardLocalUsers', JSON.stringify(localUsers));
+                console.log('Default admin user initialized: Maurice Mullings');
+            }
+        }
+
         // Migrate plaintext passwords to hashed passwords (one-time migration)
         async function migrateLocalUserPasswords() {
             let migrated = false;
@@ -11497,10 +11516,15 @@
         // Google Drive Configuration
         const GOOGLE_DRIVE_CONFIG = {
             CLIENT_ID: '438550085155-noiuiem0qtikha3l6ssup2r41qidfuo4.apps.googleusercontent.com',
-            FOLDER_ID: '1Vocl734yPgv9F36zgjo1DsCB2HCLSNyr',
+            FOLDER_ID: '1GJBv5ic4rA_6_w-4diyoTJtJDh-P7zdn',
             BACKUP_FILE_NAME: 'ASSET_DASHBOARD_BACKUP.json',
             SCOPES: 'https://www.googleapis.com/auth/drive.file'
         };
+
+        // Dashboard subfolder configuration
+        const DASHBOARD_FOLDER_NAME = 'Asset Dashboard';
+        const DASHBOARD_SUBFOLDER_ID_KEY = 'assetDashboardSubfolderId';
+        const DASHBOARD_FILE_IDS_KEY = 'assetDashboardDataFileIds';
 
         // Cloud sync state
         let googleAccessToken = null;
@@ -11510,6 +11534,8 @@
         let lastSavedBy = null;
         let cloudFileTimestamp = null;
         let googleTokenClient = null;
+        let dashboardSubfolderId = null;
+        let dataFileIds = {};
 
         // Auto-sync state
         let autoSyncInterval = null;
@@ -11532,6 +11558,10 @@
             if (savedFileId) {
                 cloudFileId = savedFileId;
             }
+
+            const savedSubfolderId = localStorage.getItem(DASHBOARD_SUBFOLDER_ID_KEY);
+            if (savedSubfolderId) dashboardSubfolderId = savedSubfolderId;
+            try { dataFileIds = JSON.parse(localStorage.getItem(DASHBOARD_FILE_IDS_KEY) || '{}'); } catch(e) { dataFileIds = {}; }
 
             // Check if token is still valid
             if (savedToken && savedExpiry) {
@@ -11907,9 +11937,10 @@
                         }
                     );
                 } else {
+                    const autoFolderId = await findOrCreateDashboardFolder();
                     const metadata = {
                         name: GOOGLE_DRIVE_CONFIG.BACKUP_FILE_NAME,
-                        parents: [GOOGLE_DRIVE_CONFIG.FOLDER_ID],
+                        parents: [autoFolderId],
                         mimeType: 'application/json'
                     };
                     const formData = new FormData();
@@ -12169,10 +12200,14 @@
                 googleAccessToken = null;
                 isCloudConnected = false;
                 cloudFileId = null;
+                dashboardSubfolderId = null;
+                dataFileIds = {};
 
                 localStorage.removeItem('assetDashboardGoogleAccessToken');
                 localStorage.removeItem('assetDashboardGoogleTokenExpiry');
                 localStorage.removeItem('assetDashboardCloudFileId');
+                localStorage.removeItem(DASHBOARD_SUBFOLDER_ID_KEY);
+                localStorage.removeItem(DASHBOARD_FILE_IDS_KEY);
 
                 updateCloudUI(false);
                 document.querySelectorAll('.cloud-dropdown-menu.show').forEach(m => m.classList.remove('show'));
@@ -12183,7 +12218,24 @@
         // Find existing backup file
         async function findExistingBackupFile() {
             try {
-                const query = `name='${GOOGLE_DRIVE_CONFIG.BACKUP_FILE_NAME}' and '${GOOGLE_DRIVE_CONFIG.FOLDER_ID}' in parents and trashed=false`;
+                // Load stored subfolder/file IDs
+                const storedSubfolderId = localStorage.getItem(DASHBOARD_SUBFOLDER_ID_KEY);
+                if (storedSubfolderId) dashboardSubfolderId = storedSubfolderId;
+                try {
+                    const storedFileIds = localStorage.getItem(DASHBOARD_FILE_IDS_KEY);
+                    if (storedFileIds) dataFileIds = JSON.parse(storedFileIds);
+                } catch(e) {}
+
+                // If we have separate data files already tracked, mark backup as present
+                if (Object.keys(dataFileIds).length > 0 && !cloudFileId) {
+                    cloudFileId = 'DASHBOARD_MULTI';
+                    console.log('Found existing dashboard data files:', Object.keys(dataFileIds));
+                    return;
+                }
+
+                // Search for combined backup in subfolder or main folder
+                const parentId = dashboardSubfolderId || GOOGLE_DRIVE_CONFIG.FOLDER_ID;
+                const query = `name='${GOOGLE_DRIVE_CONFIG.BACKUP_FILE_NAME}' and '${parentId}' in parents and trashed=false`;
                 const response = await fetch(
                     `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(query)}&fields=files(id,name,modifiedTime)`,
                     { headers: { 'Authorization': `Bearer ${googleAccessToken}` } }
@@ -12266,6 +12318,85 @@
             await saveToCloud();
         }
 
+        // Find or create the "Asset Dashboard" subfolder inside the configured Drive folder
+        async function findOrCreateDashboardFolder() {
+            if (dashboardSubfolderId) return dashboardSubfolderId;
+            const stored = localStorage.getItem(DASHBOARD_SUBFOLDER_ID_KEY);
+            if (stored) {
+                try {
+                    const resp = await fetch(
+                        `https://www.googleapis.com/drive/v3/files/${stored}?fields=id,trashed`,
+                        { headers: { 'Authorization': `Bearer ${googleAccessToken}` } }
+                    );
+                    if (resp.ok) {
+                        const f = await resp.json();
+                        if (!f.trashed) { dashboardSubfolderId = stored; return stored; }
+                    }
+                } catch(e) {}
+                localStorage.removeItem(DASHBOARD_SUBFOLDER_ID_KEY);
+                dashboardSubfolderId = null;
+            }
+            const createResp = await fetch('https://www.googleapis.com/drive/v3/files', {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${googleAccessToken}`, 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name: DASHBOARD_FOLDER_NAME, mimeType: 'application/vnd.google-apps.folder', parents: [GOOGLE_DRIVE_CONFIG.FOLDER_ID] })
+            });
+            if (!createResp.ok) throw new Error('Failed to create dashboard subfolder in Google Drive');
+            const folder = await createResp.json();
+            dashboardSubfolderId = folder.id;
+            localStorage.setItem(DASHBOARD_SUBFOLDER_ID_KEY, dashboardSubfolderId);
+            console.log('[Cloud] Created dashboard subfolder:', dashboardSubfolderId);
+            return dashboardSubfolderId;
+        }
+
+        // Upload a named data file to the dashboard subfolder
+        async function uploadDashboardFile(fileName, fileKey, data) {
+            const folderId = await findOrCreateDashboardFolder();
+            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+            const existingId = dataFileIds[fileKey];
+            let response;
+            if (existingId) {
+                response = await fetch(
+                    `https://www.googleapis.com/upload/drive/v3/files/${existingId}?uploadType=media`,
+                    { method: 'PATCH', headers: { 'Authorization': `Bearer ${googleAccessToken}`, 'Content-Type': 'application/json' }, body: blob }
+                );
+                if (response && response.status === 404) {
+                    delete dataFileIds[fileKey];
+                    localStorage.setItem(DASHBOARD_FILE_IDS_KEY, JSON.stringify(dataFileIds));
+                    return uploadDashboardFile(fileName, fileKey, data);
+                }
+            } else {
+                const metadata = { name: fileName, parents: [folderId], mimeType: 'application/json' };
+                const formData = new FormData();
+                formData.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
+                formData.append('file', blob);
+                response = await fetch(
+                    'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,name',
+                    { method: 'POST', headers: { 'Authorization': `Bearer ${googleAccessToken}` }, body: formData }
+                );
+                if (response && response.ok) {
+                    const result = await response.json();
+                    dataFileIds[fileKey] = result.id;
+                    localStorage.setItem(DASHBOARD_FILE_IDS_KEY, JSON.stringify(dataFileIds));
+                }
+            }
+            return response && response.ok;
+        }
+
+        // Download a dashboard data file by key
+        async function downloadDashboardFile(fileKey) {
+            const fileId = dataFileIds[fileKey];
+            if (!fileId) return null;
+            try {
+                const response = await fetch(
+                    `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`,
+                    { headers: { 'Authorization': `Bearer ${googleAccessToken}` } }
+                );
+                if (response.ok) return await response.json();
+            } catch(e) {}
+            return null;
+        }
+
         // Save to cloud
         async function saveToCloud() {
             if (!isCloudConnected || !googleAccessToken) {
@@ -12280,63 +12411,62 @@
             setCloudSyncing(true);
 
             try {
-                const backupData = {
+                // Find or create the dashboard subfolder
+                const folderId = await findOrCreateDashboardFolder();
+
+                const meta = {
                     version: '1.4',
                     timestamp: new Date().toISOString(),
-                    savedBy: currentUser ? currentUser.username : 'Unknown',
-                    data: {
-                        assets: loadAssetsFromStorage(),
-                        qrCodeRegistry: loadQRRegistry(),
-                        auditTrail: loadAuditFromStorage(),
-                        departments: JSON.parse(localStorage.getItem(DEPARTMENTS_STORAGE_KEY) || '[]'),
-                        categories: JSON.parse(localStorage.getItem(CATEGORIES_STORAGE_KEY) || '[]'),
-                        disposalRecords: (_dbGet(DISPOSAL_STORAGE_KEY) || []),
-                        deletedAssetIds: (_dbGet(ASSET_DELETED_IDS_KEY) || []),
-                        disposalDeletedIds: (_dbGet(DISPOSAL_DELETED_IDS_KEY) || []),
-                        portalUserAccounts: JSON.parse(localStorage.getItem('portalUserAccounts') || '[]'),
-                        portalHeadingSettings: JSON.parse(localStorage.getItem('portalHeadingSettings') || 'null'),
-                        localUserSettings: localUserSettings,
-                        localUsers: localUsers // Backup local users (passwords are hashed)
-                    }
+                    savedBy: currentUser ? currentUser.username : 'Unknown'
                 };
 
-                const jsonContent = JSON.stringify(backupData, null, 2);
-                const blob = new Blob([jsonContent], { type: 'application/json' });
+                const assetsArr = loadAssetsFromStorage();
+                const qrCodesObj = loadQRRegistry();
+                const auditArr = loadAuditFromStorage();
+                const deptsArr = JSON.parse(localStorage.getItem(DEPARTMENTS_STORAGE_KEY) || '[]');
+                const catsArr = JSON.parse(localStorage.getItem(CATEGORIES_STORAGE_KEY) || '[]');
+                const disposalArr = (_dbGet(DISPOSAL_STORAGE_KEY) || []);
+                const deletedIdsArr = (_dbGet(ASSET_DELETED_IDS_KEY) || []);
+                const disposalDelIdsArr = (_dbGet(DISPOSAL_DELETED_IDS_KEY) || []);
+                const portalUsersArr = JSON.parse(localStorage.getItem('portalUserAccounts') || '[]');
+                const portalHeadingObj = JSON.parse(localStorage.getItem('portalHeadingSettings') || 'null');
+
+                // Save separate data files to the dashboard subfolder
+                await uploadDashboardFile('Assets.json', 'assets', { ...meta, assets: assetsArr, qrCodeRegistry: qrCodesObj, deletedAssetIds: deletedIdsArr });
+                await uploadDashboardFile('Audit Trail.json', 'audit', { ...meta, auditTrail: auditArr });
+                await uploadDashboardFile('Configuration.json', 'config', { ...meta, departments: deptsArr, categories: catsArr, portalHeadingSettings: portalHeadingObj, localUserSettings: localUserSettings });
+                await uploadDashboardFile('Local Users.json', 'users', { ...meta, localUsers: localUsers });
+                await uploadDashboardFile('Disposal Records.json', 'disposal', { ...meta, disposalRecords: disposalArr, disposalDeletedIds: disposalDelIdsArr });
+                await uploadDashboardFile('Portal Users.json', 'portal', { ...meta, portalUserAccounts: portalUsersArr });
+
+                // Also save combined backup for auto-sync compatibility
+                const combinedBackup = {
+                    ...meta,
+                    data: {
+                        assets: assetsArr, qrCodeRegistry: qrCodesObj, auditTrail: auditArr,
+                        departments: deptsArr, categories: catsArr,
+                        disposalRecords: disposalArr, deletedAssetIds: deletedIdsArr, disposalDeletedIds: disposalDelIdsArr,
+                        portalUserAccounts: portalUsersArr, portalHeadingSettings: portalHeadingObj,
+                        localUserSettings: localUserSettings, localUsers: localUsers
+                    }
+                };
+                const combinedBlob = new Blob([JSON.stringify(combinedBackup, null, 2)], { type: 'application/json' });
 
                 let response;
-
-                if (cloudFileId) {
+                if (cloudFileId && cloudFileId !== 'DASHBOARD_MULTI') {
                     response = await fetch(
                         `https://www.googleapis.com/upload/drive/v3/files/${cloudFileId}?uploadType=media`,
-                        {
-                            method: 'PATCH',
-                            headers: {
-                                'Authorization': `Bearer ${googleAccessToken}`,
-                                'Content-Type': 'application/json'
-                            },
-                            body: blob
-                        }
+                        { method: 'PATCH', headers: { 'Authorization': `Bearer ${googleAccessToken}`, 'Content-Type': 'application/json' }, body: combinedBlob }
                     );
                 } else {
-                    const metadata = {
-                        name: GOOGLE_DRIVE_CONFIG.BACKUP_FILE_NAME,
-                        parents: [GOOGLE_DRIVE_CONFIG.FOLDER_ID],
-                        mimeType: 'application/json'
-                    };
-
+                    const metadata = { name: GOOGLE_DRIVE_CONFIG.BACKUP_FILE_NAME, parents: [folderId], mimeType: 'application/json' };
                     const formData = new FormData();
                     formData.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
-                    formData.append('file', blob);
-
+                    formData.append('file', combinedBlob);
                     response = await fetch(
                         'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,name',
-                        {
-                            method: 'POST',
-                            headers: { 'Authorization': `Bearer ${googleAccessToken}` },
-                            body: formData
-                        }
+                        { method: 'POST', headers: { 'Authorization': `Bearer ${googleAccessToken}` }, body: formData }
                     );
-
                     if (response.ok) {
                         const result = await response.json();
                         cloudFileId = result.id;
@@ -12345,7 +12475,7 @@
                 }
 
                 if (!response.ok) {
-                    const errorData = await response.json();
+                    const errorData = await response.json().catch(() => ({}));
                     throw new Error(errorData.error?.message || 'Upload failed');
                 }
 
@@ -12354,11 +12484,11 @@
                 updateLastSyncDisplay();
 
                 lastSavedBy = currentUser ? currentUser.username : 'Unknown';
-                cloudFileTimestamp = new Date().toISOString();
+                cloudFileTimestamp = meta.timestamp;
                 updateLastSavedByDisplay();
 
                 setCloudSyncing(false);
-                alert(`Data saved to Google Drive successfully!\n\nSaved by: ${lastSavedBy}`);
+                alert(`Data saved to Google Drive successfully!\n\nSaved to: "${DASHBOARD_FOLDER_NAME}" subfolder\n6 separate data files saved\nSaved by: ${lastSavedBy}`);
 
             } catch (error) {
                 console.error('Error saving to cloud:', error);
@@ -12382,11 +12512,11 @@
 
             document.querySelectorAll('.cloud-dropdown-menu.show').forEach(m => m.classList.remove('show'));
 
-            if (!cloudFileId) {
+            if (!cloudFileId && Object.keys(dataFileIds).length === 0) {
                 await findExistingBackupFile();
             }
 
-            if (!cloudFileId) {
+            if (!cloudFileId && Object.keys(dataFileIds).length === 0) {
                 alert('No backup file found in Google Drive. Save your data first to create a backup.');
                 return;
             }
@@ -12396,14 +12526,47 @@
             setCloudSyncing(true);
 
             try {
-                const response = await fetch(
-                    `https://www.googleapis.com/drive/v3/files/${cloudFileId}?alt=media`,
-                    { headers: { 'Authorization': `Bearer ${googleAccessToken}` } }
-                );
+                // Try to restore from separate dashboard files first
+                let backupData = null;
+                const assetsFile = await downloadDashboardFile('assets');
+                const auditFile = await downloadDashboardFile('audit');
+                const configFile = await downloadDashboardFile('config');
+                const usersFile = await downloadDashboardFile('users');
+                const disposalFile = await downloadDashboardFile('disposal');
+                const portalFile = await downloadDashboardFile('portal');
 
-                if (!response.ok) throw new Error('Failed to download backup');
-
-                const backupData = await response.json();
+                if (assetsFile || auditFile || configFile) {
+                    // Reconstruct combined data from separate files
+                    backupData = {
+                        version: '1.4',
+                        timestamp: (assetsFile || auditFile || configFile).timestamp || new Date().toISOString(),
+                        savedBy: (assetsFile || auditFile || configFile).savedBy || 'Unknown',
+                        data: {
+                            assets: (assetsFile && assetsFile.assets) || [],
+                            qrCodeRegistry: (assetsFile && assetsFile.qrCodeRegistry) || null,
+                            deletedAssetIds: (assetsFile && assetsFile.deletedAssetIds) || [],
+                            auditTrail: (auditFile && auditFile.auditTrail) || [],
+                            departments: (configFile && configFile.departments) || [],
+                            categories: (configFile && configFile.categories) || [],
+                            portalHeadingSettings: (configFile && configFile.portalHeadingSettings) || null,
+                            localUserSettings: (configFile && configFile.localUserSettings) || {},
+                            localUsers: (usersFile && usersFile.localUsers) || [],
+                            disposalRecords: (disposalFile && disposalFile.disposalRecords) || [],
+                            disposalDeletedIds: (disposalFile && disposalFile.disposalDeletedIds) || [],
+                            portalUserAccounts: (portalFile && portalFile.portalUserAccounts) || []
+                        }
+                    };
+                } else if (cloudFileId && cloudFileId !== 'DASHBOARD_MULTI') {
+                    // Fall back to combined backup file
+                    const response = await fetch(
+                        `https://www.googleapis.com/drive/v3/files/${cloudFileId}?alt=media`,
+                        { headers: { 'Authorization': `Bearer ${googleAccessToken}` } }
+                    );
+                    if (!response.ok) throw new Error('Failed to download backup');
+                    backupData = await response.json();
+                } else {
+                    throw new Error('No backup data found in Google Drive');
+                }
 
                 if (!backupData.data || !backupData.version) {
                     throw new Error('Invalid backup file format');
@@ -31057,6 +31220,9 @@
 
                 // Migrate any plaintext passwords to hashed format
                 await migrateLocalUserPasswords();
+
+                // Initialize default admin user if not already present
+                await initializeDefaultAdminUser();
 
                 // Preload credentials from Google Sheets
                 console.log('Preloading credentials...');

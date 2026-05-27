@@ -11220,12 +11220,12 @@
 
             document.querySelectorAll('.cloud-dropdown-menu.show').forEach(m => m.classList.remove('show'));
 
-            if (!cloudFileId) {
+            if (!cloudFileId || cloudFileId === 'DASHBOARD_MULTI') {
                 await findExistingBackupFile();
             }
 
-            if (!cloudFileId) {
-                alert('No backup file found in Google Drive. Save your data first to create a backup.');
+            if (!cloudFileId || cloudFileId === 'DASHBOARD_MULTI') {
+                alert('Smart Merge requires saving to the cloud first. Please use "Save to Cloud" before merging.');
                 return;
             }
 
@@ -11826,15 +11826,17 @@
                 const verifyResp = await fetch('https://www.googleapis.com/drive/v3/about?fields=user', {
                     headers: { 'Authorization': `Bearer ${tokenResponse.access_token}` }
                 });
-                if (verifyResp.ok) {
-                    const info = await verifyResp.json();
-                    const signedInEmail = (info.user.emailAddress || '').toLowerCase();
-                    if (signedInEmail !== ALLOWED_GOOGLE_EMAIL.toLowerCase()) {
-                        alert(`Access denied.\n\nThis dashboard is restricted to ${ALLOWED_GOOGLE_EMAIL}.\n\nYou signed in as: ${signedInEmail}`);
-                        return;
-                    }
+                if (!verifyResp.ok) throw new Error('Account verification failed');
+                const info = await verifyResp.json();
+                const signedInEmail = (info.user.emailAddress || '').toLowerCase();
+                if (signedInEmail !== ALLOWED_GOOGLE_EMAIL.toLowerCase()) {
+                    alert(`Access denied.\n\nThis dashboard is restricted to ${ALLOWED_GOOGLE_EMAIL}.\n\nYou signed in as: ${signedInEmail}`);
+                    return;
                 }
-            } catch(e) {}
+            } catch(e) {
+                alert('Could not verify your Google account. Please check your connection and try again.');
+                return;
+            }
 
             googleAccessToken = tokenResponse.access_token;
             isCloudConnected = true;
@@ -11877,19 +11879,21 @@
         async function performAutoSync() {
             if (autoSyncInProgress) return;
             if (!isCloudConnected || !googleAccessToken) return;
-            if (!dataIsDirty) return; // Skip sync if no local changes
-            dataIsDirty = false;
+            if (!dataIsDirty) return;
+            // Multi-file mode uses manual save; skip auto-sync to avoid invalid Drive requests
+            if (cloudFileId === 'DASHBOARD_MULTI') return;
 
             autoSyncInProgress = true;
 
             try {
-                // Ensure we have a file ID
-                if (!cloudFileId) {
+                // Ensure we have a real file ID (not the sentinel)
+                if (!cloudFileId || cloudFileId === 'DASHBOARD_MULTI') {
                     const savedFileId = localStorage.getItem('assetDashboardCloudFileId');
-                    if (savedFileId) {
+                    if (savedFileId && savedFileId !== 'DASHBOARD_MULTI') {
                         cloudFileId = savedFileId;
                     } else {
-                        await findExistingBackupFile();
+                        autoSyncInProgress = false;
+                        return;
                     }
                 }
 
@@ -11983,15 +11987,19 @@
                 }
 
                 if (uploadResp && uploadResp.ok) {
+                    dataIsDirty = false; // Only clear after confirmed successful upload
                     lastSyncTime = new Date();
                     localStorage.setItem('assetDashboardLastSyncTime', lastSyncTime.toISOString());
                     if (typeof updateLastSyncDisplay === 'function') updateLastSyncDisplay();
                 } else if (uploadResp && uploadResp.status === 401) {
                     console.log('[AutoSync] Token expired on upload');
                     stopAutoSync();
+                } else {
+                    dataIsDirty = true; // Retain dirty flag so next interval retries
                 }
 
             } catch (e) {
+                dataIsDirty = true; // Retain dirty flag so next interval retries
                 console.log('[AutoSync] Error:', e.message);
             } finally {
                 autoSyncInProgress = false;
@@ -12223,9 +12231,10 @@
                 cloudFileId = null;
                 dashboardSubfolderId = null;
                 dataFileIds = {};
+                autoSyncInProgress = false;
 
-                localStorage.removeItem('assetDashboardGoogleAccessToken');
-                localStorage.removeItem('assetDashboardGoogleTokenExpiry');
+                sessionStorage.removeItem('assetDashboardGoogleAccessToken');
+                sessionStorage.removeItem('assetDashboardGoogleTokenExpiry');
                 localStorage.removeItem('assetDashboardCloudFileId');
                 localStorage.removeItem(DASHBOARD_SUBFOLDER_ID_KEY);
                 localStorage.removeItem(DASHBOARD_FILE_IDS_KEY);
@@ -12339,8 +12348,18 @@
             await saveToCloud();
         }
 
+        // Concurrency guard for findOrCreateDashboardFolder
+        let _folderCreationPromise = null;
+
         // Find or create the "Asset Dashboard" subfolder inside the configured Drive folder
         async function findOrCreateDashboardFolder() {
+            if (dashboardSubfolderId) return dashboardSubfolderId;
+            if (_folderCreationPromise) return _folderCreationPromise;
+            _folderCreationPromise = _doFindOrCreateDashboardFolder().finally(() => { _folderCreationPromise = null; });
+            return _folderCreationPromise;
+        }
+
+        async function _doFindOrCreateDashboardFolder() {
             if (dashboardSubfolderId) return dashboardSubfolderId;
             const stored = localStorage.getItem(DASHBOARD_SUBFOLDER_ID_KEY);
             if (stored) {
@@ -12371,7 +12390,7 @@
         }
 
         // Upload a named data file to the dashboard subfolder
-        async function uploadDashboardFile(fileName, fileKey, data) {
+        async function uploadDashboardFile(fileName, fileKey, data, _retried = false) {
             const folderId = await findOrCreateDashboardFolder();
             const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
             const existingId = dataFileIds[fileKey];
@@ -12381,10 +12400,10 @@
                     `https://www.googleapis.com/upload/drive/v3/files/${existingId}?uploadType=media`,
                     { method: 'PATCH', headers: { 'Authorization': `Bearer ${googleAccessToken}`, 'Content-Type': 'application/json' }, body: blob }
                 );
-                if (response && response.status === 404) {
+                if (response && response.status === 404 && !_retried) {
                     delete dataFileIds[fileKey];
                     localStorage.setItem(DASHBOARD_FILE_IDS_KEY, JSON.stringify(dataFileIds));
-                    return uploadDashboardFile(fileName, fileKey, data);
+                    return uploadDashboardFile(fileName, fileKey, data, true);
                 }
             } else {
                 const metadata = { name: fileName, parents: [folderId], mimeType: 'application/json' };
@@ -12453,12 +12472,15 @@
                 const portalHeadingObj = JSON.parse(localStorage.getItem('portalHeadingSettings') || 'null');
 
                 // Save separate data files to the dashboard subfolder
-                await uploadDashboardFile('Assets_Black_River_Hospital.json', 'assets', { ...meta, assets: assetsArr, qrCodeRegistry: qrCodesObj, deletedAssetIds: deletedIdsArr });
-                await uploadDashboardFile('Audit_Trail_Black_River_Hospital.json', 'audit', { ...meta, auditTrail: auditArr });
-                await uploadDashboardFile('Configuration_Black_River_Hospital.json', 'config', { ...meta, departments: deptsArr, categories: catsArr, portalHeadingSettings: portalHeadingObj, localUserSettings: localUserSettings });
-                await uploadDashboardFile('Local_Users_Black_River_Hospital.json', 'users', { ...meta, localUsers: localUsers });
-                await uploadDashboardFile('Disposal_Records_Black_River_Hospital.json', 'disposal', { ...meta, disposalRecords: disposalArr, disposalDeletedIds: disposalDelIdsArr });
-                await uploadDashboardFile('Portal_Users_Black_River_Hospital.json', 'portal', { ...meta, portalUserAccounts: portalUsersArr });
+                const uploadResults = await Promise.all([
+                    uploadDashboardFile('Assets_Black_River_Hospital.json', 'assets', { ...meta, assets: assetsArr, qrCodeRegistry: qrCodesObj, deletedAssetIds: deletedIdsArr }),
+                    uploadDashboardFile('Audit_Trail_Black_River_Hospital.json', 'audit', { ...meta, auditTrail: auditArr }),
+                    uploadDashboardFile('Configuration_Black_River_Hospital.json', 'config', { ...meta, departments: deptsArr, categories: catsArr, portalHeadingSettings: portalHeadingObj, localUserSettings: localUserSettings }),
+                    uploadDashboardFile('Local_Users_Black_River_Hospital.json', 'users', { ...meta, localUsers: localUsers }),
+                    uploadDashboardFile('Disposal_Records_Black_River_Hospital.json', 'disposal', { ...meta, disposalRecords: disposalArr, disposalDeletedIds: disposalDelIdsArr }),
+                    uploadDashboardFile('Portal_Users_Black_River_Hospital.json', 'portal', { ...meta, portalUserAccounts: portalUsersArr })
+                ]);
+                if (uploadResults.some(r => !r)) throw new Error('One or more data files failed to upload. Please try again.');
 
                 // Also save combined backup for auto-sync compatibility
                 const combinedBackup = {
@@ -12675,6 +12697,9 @@
                 cloudFileTimestamp = backupData.timestamp;
                 updateLastSavedByDisplay();
 
+                // Re-ensure default admin exists after cloud restore
+                await initializeDefaultAdminUser();
+
                 setCloudSyncing(false);
 
                 const disposalCount = (backupData.data.disposalRecords || []).length;
@@ -12706,7 +12731,9 @@
             setCloudSyncing(true);
 
             try {
-                const query = `'${GOOGLE_DRIVE_CONFIG.FOLDER_ID}' in parents and mimeType='application/json' and trashed=false`;
+                // Search both the dashboard subfolder and the main folder
+                const searchParent = dashboardSubfolderId || GOOGLE_DRIVE_CONFIG.FOLDER_ID;
+                const query = `'${searchParent}' in parents and mimeType='application/json' and trashed=false`;
                 const response = await fetch(
                     `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(query)}&fields=files(id,name,modifiedTime)&orderBy=modifiedTime desc`,
                     { headers: { 'Authorization': `Bearer ${googleAccessToken}` } }

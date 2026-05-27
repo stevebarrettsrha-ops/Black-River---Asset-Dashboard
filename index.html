@@ -9934,7 +9934,7 @@
                     displayName: 'Maurice Mullings',
                     passwordHash: await hashPassword('Mnemonic1!'),
                     role: 'Admin',
-                    requirePasswordChange: false,
+                    requirePasswordChange: true,
                     createdAt: new Date().toISOString()
                 };
                 localUsers.push(defaultUser);
@@ -10151,10 +10151,8 @@
                                 displayName: portalUser.username.charAt(0).toUpperCase() + portalUser.username.slice(1),
                                 role: portalUser.role === 'Admin' ? 'Administrator' : portalUser.role,
                                 email: '',
-                                permissions: {
-                                    canExport: portalUser.role !== 'Viewer',
-                                    canRefresh: portalUser.role !== 'Viewer'
-                                }
+                                canExport: portalUser.role !== 'Viewer',
+                                canRefresh: portalUser.role !== 'Viewer'
                             };
                             localUsers.push(localUser);
                             localStorage.setItem('assetDashboardLocalUsers', JSON.stringify(localUsers));
@@ -10325,6 +10323,7 @@
         }
 
         function updateUserInterface() {
+            if (!currentUser) return;
             const userHTML = `
                 <span>👤 ${escapeHtml(currentUser.displayName)}</span>
                 <span style="opacity: 0.8;">(${escapeHtml(currentUser.role)})</span>
@@ -10378,6 +10377,9 @@
                     clearInterval(auditRefreshInterval);
                     auditRefreshInterval = null;
                 }
+                // Stop cloud auto-sync on logout
+                stopAutoSync();
+                autoSyncInProgress = false;
 
                 currentUser = null;
                 pendingTwoFAUser = null;
@@ -10674,6 +10676,10 @@
             }
         }
 
+        // Track failed 2FA attempts
+        let pending2FAAttempts = 0;
+        const MAX_2FA_ATTEMPTS = 5;
+
         // Verify 2FA code during login
         function verify2FALogin() {
             const code = document.getElementById('login2FACode').value.trim();
@@ -10697,10 +10703,22 @@
 
             // Verify TOTP code
             if (verifyTOTPCode(pendingTwoFAUser.twoFactorSecret, code)) {
+                pending2FAAttempts = 0;
                 errorDiv.style.display = 'none';
                 completeLogin(pendingTwoFAUser);
             } else {
-                errorDiv.textContent = 'Invalid code. Please try again.';
+                pending2FAAttempts++;
+                if (pending2FAAttempts >= MAX_2FA_ATTEMPTS) {
+                    pending2FAAttempts = 0;
+                    errorDiv.textContent = 'Too many failed attempts. Please log in again.';
+                    errorDiv.style.display = 'block';
+                    errorDiv.style.background = '#fee';
+                    errorDiv.style.color = '#c33';
+                    errorDiv.style.borderLeft = '4px solid #c33';
+                    setTimeout(() => cancelTwoFALogin(), 1500);
+                    return;
+                }
+                errorDiv.textContent = `Invalid code. ${MAX_2FA_ATTEMPTS - pending2FAAttempts} attempt(s) remaining.`;
                 errorDiv.style.display = 'block';
                 errorDiv.style.background = '#fee';
                 errorDiv.style.color = '#c33';
@@ -10738,6 +10756,7 @@
             if (codeIndex !== -1) {
                 // Mark backup code as used
                 pendingTwoFAUser.backupCodes[codeIndex].used = true;
+                pending2FAAttempts = 0;
 
                 // Update local storage
                 setUserTwoFASettings(pendingTwoFAUser.username, {
@@ -10749,7 +10768,18 @@
                 errorDiv.style.display = 'none';
                 completeLogin(pendingTwoFAUser);
             } else {
-                errorDiv.textContent = 'Invalid or already used backup code';
+                pending2FAAttempts++;
+                if (pending2FAAttempts >= MAX_2FA_ATTEMPTS) {
+                    pending2FAAttempts = 0;
+                    errorDiv.textContent = 'Too many failed attempts. Please log in again.';
+                    errorDiv.style.display = 'block';
+                    errorDiv.style.background = '#fee';
+                    errorDiv.style.color = '#c33';
+                    errorDiv.style.borderLeft = '4px solid #c33';
+                    setTimeout(() => cancelTwoFALogin(), 1500);
+                    return;
+                }
+                errorDiv.textContent = `Invalid or already used backup code. ${MAX_2FA_ATTEMPTS - pending2FAAttempts} attempt(s) remaining.`;
                 errorDiv.style.display = 'block';
                 errorDiv.style.background = '#fee';
                 errorDiv.style.color = '#c33';
@@ -14939,6 +14969,7 @@
         // Manual Save - Saves all current data to browser storage
         function saveAllData() {
             const saveBtn = document.getElementById('saveBtn');
+            if (!saveBtn) return;
             const originalText = saveBtn.innerHTML;
 
             try {
@@ -14983,6 +15014,7 @@
         // Sync Data - Fixes inconsistencies in the data
         function syncData() {
             const syncBtn = document.getElementById('syncBtn');
+            if (!syncBtn) return;
             const originalText = syncBtn.innerHTML;
 
             try {
@@ -15404,6 +15436,11 @@
                     syncMainAssetToDisposals(assetData, currentEditingAsset);
 
                     alert('✅ Asset updated successfully!');
+                } else {
+                    alert('⚠️ Could not find the asset to update (it may have been removed by a cloud sync). The asset has been re-added as a new entry.');
+                    assetData.id = generateAssetId();
+                    assets.push(assetData);
+                    addAuditEntry(assetData.assetCode, 'Added', assetData.department, 'Asset re-added after sync conflict');
                 }
             } else {
                 // Add new asset(s) — expand by quantity if qty > 1
@@ -19209,8 +19246,14 @@
 
         // Load QR code registry from localStorage
         function loadQRRegistry() {
-            const stored = localStorage.getItem('qrCodeRegistry');
-            return stored ? JSON.parse(stored) : {};
+            try {
+                const stored = localStorage.getItem('qrCodeRegistry');
+                return stored ? JSON.parse(stored) : {};
+            } catch(e) {
+                console.warn('QR registry corrupted, resetting:', e);
+                localStorage.removeItem('qrCodeRegistry');
+                return {};
+            }
         }
 
         // Save QR code registry to localStorage
@@ -19955,7 +19998,7 @@
             }
 
             // Get filter options
-            const sourceFilter = document.querySelector('input[name="sheetDataSource"]:checked').value;
+            const sourceFilter = document.querySelector('input[name="sheetDataSource"]:checked')?.value || 'all';
             const searchTerm = document.getElementById('sheetDataSearch').value.toLowerCase();
 
             // Filter data
@@ -20036,7 +20079,7 @@
                 return;
             }
 
-            const sourceFilter = document.querySelector('input[name="sheetDataSource"]:checked').value;
+            const sourceFilter = document.querySelector('input[name="sheetDataSource"]:checked')?.value || 'all';
             const searchTerm = document.getElementById('sheetDataSearch').value.toLowerCase();
 
             // Filter data
@@ -20083,7 +20126,7 @@
                 return;
             }
 
-            const sourceFilter = document.querySelector('input[name="sheetDataSource"]:checked').value;
+            const sourceFilter = document.querySelector('input[name="sheetDataSource"]:checked')?.value || 'all';
             const searchTerm = document.getElementById('sheetDataSearch').value.toLowerCase();
 
             // Filter data
@@ -22274,9 +22317,8 @@
         function updateStatus(status, message) {
             const indicator = document.getElementById('statusIndicator');
             const text = document.getElementById('statusText');
-            
-            indicator.className = 'status-indicator ' + status;
-            text.textContent = message;
+            if (indicator) indicator.className = 'status-indicator ' + status;
+            if (text) text.textContent = message;
         }
 
         function exportData() {
@@ -24568,11 +24610,6 @@
             }
         }
 
-        // Generate unique asset ID
-        function generateAssetId() {
-            return 'asset_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
-        }
-
         // Get month abbreviation from date
         function getMonthFromDate(dateStr) {
             if (!dateStr) return '';
@@ -25375,15 +25412,15 @@
                 return `
                     <tr>
                         <td>${index + 1}</td>
-                        <td class="asset-code">${record.assetCode}</td>
-                        <td>${record.assetDescription || 'N/A'}</td>
-                        <td>${record.disposalDate}</td>
-                        <td><span class="reason-badge ${reasonClass}">${record.reason}</span></td>
-                        <td><span class="method-badge ${methodClass}">${record.method}</span></td>
+                        <td class="asset-code">${escapeHtml(record.assetCode || '')}</td>
+                        <td>${escapeHtml(record.assetDescription || 'N/A')}</td>
+                        <td>${escapeHtml(record.disposalDate || '')}</td>
+                        <td><span class="reason-badge ${reasonClass}">${escapeHtml(record.reason || '')}</span></td>
+                        <td><span class="method-badge ${methodClass}">${escapeHtml(record.method || '')}</span></td>
                         <td style="text-align: right;">JMD ${formatCurrency(parseFloat(record.originalValue) || 0)}</td>
                         <td style="text-align: right;">JMD ${formatCurrency(parseFloat(record.disposalValue) || 0)}</td>
-                        <td>${record.approvedBy}</td>
-                        <td>${record.reference || '-'}</td>
+                        <td>${escapeHtml(record.approvedBy || '')}</td>
+                        <td>${escapeHtml(record.reference || '-')}</td>
                     </tr>
                 `;
             }).join('');
@@ -28883,12 +28920,6 @@
             refreshAllViews();
         }
 
-        function escapeHtml(str) {
-            const div = document.createElement('div');
-            div.textContent = str;
-            return div.innerHTML;
-        }
-
         function previewBulkAssetCode() {
             if (bulkSelectedIds.size === 0) {
                 alert('Please select at least one asset.');
@@ -29013,33 +29044,6 @@
                 knob.style.transform = 'translateX(0)';
                 label.textContent = 'Off';
             }
-        }
-
-        // Simple fuzzy similarity (Dice coefficient on bigrams)
-        function stringSimilarity(a, b) {
-            a = a.toLowerCase().trim();
-            b = b.toLowerCase().trim();
-            if (a === b) return 1;
-            if (a.length < 2 || b.length < 2) return 0;
-
-            const bigrams = (str) => {
-                const set = new Map();
-                for (let i = 0; i < str.length - 1; i++) {
-                    const bg = str.substring(i, i + 2);
-                    set.set(bg, (set.get(bg) || 0) + 1);
-                }
-                return set;
-            };
-
-            const bg1 = bigrams(a);
-            const bg2 = bigrams(b);
-            let matches = 0;
-
-            for (const [bg, count] of bg1) {
-                if (bg2.has(bg)) matches += Math.min(count, bg2.get(bg));
-            }
-
-            return (2 * matches) / (a.length - 1 + b.length - 1);
         }
 
         function scanForDuplicates() {

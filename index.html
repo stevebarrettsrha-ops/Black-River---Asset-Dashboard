@@ -11515,7 +11515,7 @@
 
         // Google Drive Configuration
         const GOOGLE_DRIVE_CONFIG = {
-            CLIENT_ID: '438550085155-noiuiem0qtikha3l6ssup2r41qidfuo4.apps.googleusercontent.com',
+            CLIENT_ID: '247452816806-9rt0qncbiomb45abhg9hg3agunfec8uc.apps.googleusercontent.com',
             FOLDER_ID: '1GJBv5ic4rA_6_w-4diyoTJtJDh-P7zdn',
             BACKUP_FILE_NAME: 'ASSET_DASHBOARD_BACKUP.json',
             SCOPES: 'https://www.googleapis.com/auth/drive.file'
@@ -11792,6 +11792,12 @@
                 if (!response.ok) throw new Error('Invalid token');
 
                 const data = await response.json();
+                const signedInEmail = (data.user.emailAddress || '').toLowerCase();
+
+                if (signedInEmail !== ALLOWED_GOOGLE_EMAIL.toLowerCase()) {
+                    alert(`Access denied.\n\nThis dashboard is restricted to ${ALLOWED_GOOGLE_EMAIL}.\n\nYou signed in as: ${signedInEmail}`);
+                    return;
+                }
 
                 googleAccessToken = token;
                 isCloudConnected = true;
@@ -11816,6 +11822,20 @@
         }
 
         async function handleGoogleAuthCallback(tokenResponse) {
+            try {
+                const verifyResp = await fetch('https://www.googleapis.com/drive/v3/about?fields=user', {
+                    headers: { 'Authorization': `Bearer ${tokenResponse.access_token}` }
+                });
+                if (verifyResp.ok) {
+                    const info = await verifyResp.json();
+                    const signedInEmail = (info.user.emailAddress || '').toLowerCase();
+                    if (signedInEmail !== ALLOWED_GOOGLE_EMAIL.toLowerCase()) {
+                        alert(`Access denied.\n\nThis dashboard is restricted to ${ALLOWED_GOOGLE_EMAIL}.\n\nYou signed in as: ${signedInEmail}`);
+                        return;
+                    }
+                }
+            } catch(e) {}
+
             googleAccessToken = tokenResponse.access_token;
             isCloudConnected = true;
             startAutoSync();

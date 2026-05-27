@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="google-site-verification" content="WbJaK9hn8V0JLCevAfIx1hAqJq69ibqVpaCx-1KxnfU" />
-    <title>Fixed Asset Management Dashboard - May Pen Hospital</title>
+    <title>Fixed Asset Management Dashboard - Black River Hospital</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
@@ -6059,7 +6059,7 @@
         <div class="public-asset-container">
             <div class="public-asset-header" style="position: relative;">
                 <button class="close-public-viewer" onclick="closePublicAssetViewer()">&times;</button>
-                <h1>May Pen Hospital</h1>
+                <h1>Black River Hospital</h1>
                 <p>Fixed Asset Information</p>
             </div>
             <div class="public-asset-body" id="publicAssetContent">
@@ -6067,7 +6067,7 @@
             </div>
             <div class="public-asset-footer">
                 <p>Scanned via QR Code</p>
-                <p>&copy; <span id="publicCopyrightYear"></span> May Pen Hospital - Fixed Asset Management System</p>
+                <p>&copy; <span id="publicCopyrightYear"></span> Black River Hospital - Fixed Asset Management System</p>
             </div>
         </div>
     </div>
@@ -6081,7 +6081,7 @@
                 <div class="login-header">
                     <h1 class="login-title">🔒 Secure Access</h1>
                     <p class="login-subtitle">Fixed Asset Management System</p>
-                    <p class="login-subtitle">May Pen Hospital</p>
+                    <p class="login-subtitle">Black River Hospital</p>
                 </div>
 
                 <div class="login-info">
@@ -6357,7 +6357,7 @@
                 <div class="form-grid">
                     <div class="form-group">
                         <label for="assetCode">Asset Code *</label>
-                        <input type="text" id="assetCode" required placeholder="MPH-MS-190-01-2025">
+                        <input type="text" id="assetCode" required placeholder="BRH-MS-190-01-2025">
                     </div>
                     <div class="form-group">
                         <label for="dateIn">Date In *</label>
@@ -6691,7 +6691,7 @@
             </button>
             <div class="sidebar-brand">
                 <span class="sidebar-brand-name">Asset Manager</span>
-                <span class="sidebar-brand-sub">May Pen Hospital</span>
+                <span class="sidebar-brand-sub">Black River Hospital</span>
             </div>
         </div>
 
@@ -6792,7 +6792,7 @@
                     <div class="header-top">
                         <div class="header-left">
                             <h1 class="dashboard-title">Fixed Asset Management Dashboard</h1>
-                            <div class="dashboard-subtitle">May Pen Hospital • Currency: JMD (Jamaican Dollar)</div>
+                            <div class="dashboard-subtitle">Black River Hospital • Currency: JMD (Jamaican Dollar)</div>
                         </div>
                         <div style="display: flex; align-items: center; gap: 15px;">
                             <!-- Cloud Sync Dropdown -->
@@ -6868,7 +6868,7 @@
             <div class="search-section">
                 <h2 class="search-title">🔍 Asset Search Engine</h2>
                 <div class="search-container">
-                    <input type="text" id="assetCodeSearch" class="search-input" placeholder="Asset Code (e.g., MPH-MS-190-01-2025)">
+                    <input type="text" id="assetCodeSearch" class="search-input" placeholder="Asset Code (e.g., BRH-MS-190-01-2025)">
                     <input type="text" id="descriptionSearch" class="search-input" placeholder="Description">
                     <input type="text" id="serialSearch" class="search-input" placeholder="Serial/Model">
                     <input type="text" id="supplierSearch" class="search-input" placeholder="Department/Location">
@@ -6980,7 +6980,7 @@
             </div>
 
             <div class="footer">
-                <p>Fixed Asset Management System © <span id="copyrightYear"></span> • May Pen Hospital</p>
+                <p>Fixed Asset Management System © <span id="copyrightYear"></span> • Black River Hospital</p>
             </div>
         </div>
 
@@ -7037,7 +7037,7 @@
             <div id="monthlyBreakdownContainer" class="monthly-grid"></div>
 
             <div class="footer">
-                <p>Fixed Asset Management System © <span id="copyrightYear2"></span> • May Pen Hospital</p>
+                <p>Fixed Asset Management System © <span id="copyrightYear2"></span> • Black River Hospital</p>
             </div>
         </div>
 
@@ -7171,7 +7171,7 @@
                 <!-- Generate QR Code Section -->
                 <div id="qrGenerateSection" class="qr-section">
                     <div class="calc-grid">
-                        <input type="text" id="qrAssetCode" class="calc-input" placeholder="Asset Code (e.g., MPH-001-2025)">
+                        <input type="text" id="qrAssetCode" class="calc-input" placeholder="Asset Code (e.g., BRH-001-2025)">
                         <select id="qrDataFormat" class="calc-input">
                             <option value="basic">Basic Asset Code</option>
                             <option value="detailed">Asset Code + Description</option>
@@ -7216,7 +7216,7 @@
                         <div class="manual-entry-section">
                             <p class="divider-text">Or enter asset code manually</p>
                             <div class="manual-entry-row">
-                                <input type="text" id="manualAssetCodeInput" class="calc-input" placeholder="Enter Asset Code (e.g., MPH-001-2025)">
+                                <input type="text" id="manualAssetCodeInput" class="calc-input" placeholder="Enter Asset Code (e.g., BRH-001-2025)">
                                 <button class="search-btn" onclick="lookupAssetManually()">Look Up Asset</button>
                             </div>
                         </div>
@@ -7253,7 +7253,7 @@
                 <div id="addAuditEntrySection" style="display: none; background: var(--table-hover); padding: 20px; border-radius: 8px; margin-bottom: 20px; border-left: 4px solid var(--primary-orange); overflow: visible; position: relative; z-index: 5;">
                     <h3 style="margin-bottom: 15px; color: var(--text-primary);">➕ Add New Audit Entry</h3>
                     <div class="calc-grid" style="margin-bottom: 15px; overflow: visible;">
-                        <input type="text" id="auditAssetCode" class="calc-input" placeholder="Enter Asset Code (e.g., MPH-001-2025)">
+                        <input type="text" id="auditAssetCode" class="calc-input" placeholder="Enter Asset Code (e.g., BRH-001-2025)">
                         <select id="auditAction" class="calc-input">
                             <option value="">Select Action</option>
                             <option value="Asset Created">Asset Created</option>
@@ -7511,7 +7511,7 @@
             </div>
 
             <div class="footer">
-                <p>Fixed Asset Management System © <span id="copyrightYear3"></span> • May Pen Hospital</p>
+                <p>Fixed Asset Management System © <span id="copyrightYear3"></span> • Black River Hospital</p>
             </div>
         </div>
 
@@ -7721,7 +7721,7 @@
                 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 10px;">
                     <div style="padding: 10px; background: var(--table-hover); border-radius: 6px; border-left: 3px solid var(--primary-green);">
                         <strong>1. Asset Code</strong> <span style="color: #e74c3c;">*</span>
-                        <div style="font-size: 0.85em; color: var(--text-secondary);">Unique identifier (e.g., MPH-MS-001-2025)</div>
+                        <div style="font-size: 0.85em; color: var(--text-secondary);">Unique identifier (e.g., BRH-MS-001-2025)</div>
                     </div>
                     <div style="padding: 10px; background: var(--table-hover); border-radius: 6px; border-left: 3px solid var(--primary-green);">
                         <strong>2. Asset Description</strong> <span style="color: #e74c3c;">*</span>
@@ -7774,7 +7774,7 @@
             </div>
 
             <div class="footer">
-                <p>Fixed Asset Management System © <span id="copyrightYear4"></span> • May Pen Hospital</p>
+                <p>Fixed Asset Management System © <span id="copyrightYear4"></span> • Black River Hospital</p>
             </div>
         </div>
 
@@ -7840,7 +7840,7 @@
                 <!-- Folder Info -->
                 <div class="gdrive-folder-info" id="gdriveFolderInfo" style="display: none;">
                     <h3>📁 Asset Import Folder</h3>
-                    <p><strong>Folder:</strong> May Pen Hospital Asset Files</p>
+                    <p><strong>Folder:</strong> Black River Hospital Asset Files</p>
                     <p><strong>Status:</strong> <span id="gdriveFolderFileCount">Scanning for files...</span></p>
                     <p style="font-size: 0.85em; margin-top: 10px; opacity: 0.8;">
                         <a href="https://drive.google.com/drive/folders/16_p753mxRvoVrahzjbnx8cXogDrIhYd4" target="_blank" style="color: white; text-decoration: underline;">
@@ -8110,7 +8110,7 @@
             </div>
 
             <div class="footer">
-                <p>Fixed Asset Management System © <span id="copyrightYear5"></span> • May Pen Hospital</p>
+                <p>Fixed Asset Management System © <span id="copyrightYear5"></span> • Black River Hospital</p>
             </div>
         </div>
 
@@ -8230,7 +8230,7 @@
             </div>
 
             <div class="footer">
-                <p>Fixed Asset Management System © <span id="copyrightYear6"></span> • May Pen Hospital</p>
+                <p>Fixed Asset Management System © <span id="copyrightYear6"></span> • Black River Hospital</p>
             </div>
         </div>
 
@@ -8424,7 +8424,7 @@
             </div>
 
             <div class="footer">
-                <p>Fixed Asset Management System © <span id="copyrightYear7"></span> • May Pen Hospital</p>
+                <p>Fixed Asset Management System © <span id="copyrightYear7"></span> • Black River Hospital</p>
             </div>
         </div>
 
@@ -8468,7 +8468,7 @@
                 <div class="header-top">
                     <div class="header-left">
                         <h1 class="dashboard-title">Asset Code Lookup</h1>
-                        <div class="dashboard-subtitle">Standard Asset Code Reference - May Pen Hospital</div>
+                        <div class="dashboard-subtitle">Standard Asset Code Reference - Black River Hospital</div>
                     </div>
                     <div style="display: flex; align-items: center; gap: 15px;">
                         <div class="cloud-dropdown">
@@ -8609,7 +8609,7 @@
         </div>
 
         <div class="footer">
-            <p>Fixed Asset Management System © <span id="copyrightYear8"></span> • May Pen Hospital</p>
+            <p>Fixed Asset Management System © <span id="copyrightYear8"></span> • Black River Hospital</p>
         </div>
         </div>
 
@@ -8792,7 +8792,7 @@
         </div>
 
         <div class="footer">
-            <p>Fixed Asset Management System © <span id="copyrightYear9"></span> • May Pen Hospital</p>
+            <p>Fixed Asset Management System © <span id="copyrightYear9"></span> • Black River Hospital</p>
         </div>
     </div>
 
@@ -9101,7 +9101,7 @@
         </div>
 
         <div class="footer">
-            <p>Fixed Asset Management System &copy; <span id="copyrightYear10"></span> &bull; May Pen Hospital</p>
+            <p>Fixed Asset Management System &copy; <span id="copyrightYear10"></span> &bull; Black River Hospital</p>
         </div>
     </div>
 
@@ -9201,7 +9201,7 @@
         </div>
 
         <div class="footer">
-            <p>Fixed Asset Management System &copy; <span id="copyrightYear11"></span> &bull; May Pen Hospital</p>
+            <p>Fixed Asset Management System &copy; <span id="copyrightYear11"></span> &bull; Black River Hospital</p>
         </div>
     </div>
 
@@ -9351,7 +9351,7 @@
         </div>
 
         <div class="footer">
-            <p>Fixed Asset Management System &copy; <span id="copyrightYear12"></span> &bull; May Pen Hospital</p>
+            <p>Fixed Asset Management System &copy; <span id="copyrightYear12"></span> &bull; Black River Hospital</p>
         </div>
     </div>
 
@@ -9364,7 +9364,7 @@
                 <div class="header-top">
                     <div class="header-left">
                         <h1 class="dashboard-title">Hospital Asset Cost Catalog</h1>
-                        <div class="dashboard-subtitle">Comprehensive Price Reference &mdash; May Pen Hospital Fixed Asset Register</div>
+                        <div class="dashboard-subtitle">Comprehensive Price Reference &mdash; Black River Hospital Fixed Asset Register</div>
                     </div>
                     <div style="display: flex; align-items: center; gap: 15px;">
                         <div class="cloud-dropdown">
@@ -9413,7 +9413,7 @@
                 <div>
                     <div style="font-weight: 700; margin-bottom: 6px; color: var(--text-primary);">Comprehensive Hospital Asset Cost Reference Catalog</div>
                     <div style="font-size: 0.82rem; color: var(--text-secondary); line-height: 1.6;">
-                        All prices are in <strong style="color: #2ECC71;">JMD (Jamaican Dollars)</strong> and reflect actual recorded purchase data from May Pen Hospital's Fixed Asset Register (2022&ndash;2025). Items marked &#9733; have confirmed supplier pricing. Prices include 15% GCT unless noted.
+                        All prices are in <strong style="color: #2ECC71;">JMD (Jamaican Dollars)</strong> and reflect actual recorded purchase data from Black River Hospital's Fixed Asset Register (2022&ndash;2025). Items marked &#9733; have confirmed supplier pricing. Prices include 15% GCT unless noted.
                     </div>
                 </div>
             </div>
@@ -9492,7 +9492,7 @@
         </div>
 
         <div class="footer">
-            <p>Fixed Asset Management System &copy; <span id="copyrightYear13"></span> &bull; May Pen Hospital</p>
+            <p>Fixed Asset Management System &copy; <span id="copyrightYear13"></span> &bull; Black River Hospital</p>
         </div>
     </div>
 
@@ -9596,7 +9596,7 @@
         </div>
 
         <div class="footer">
-            <p>Fixed Asset Management System &copy; <span id="copyrightYear14"></span> &bull; May Pen Hospital</p>
+            <p>Fixed Asset Management System &copy; <span id="copyrightYear14"></span> &bull; Black River Hospital</p>
         </div>
     </div>
 
@@ -9641,7 +9641,7 @@
         </div>
 
         <div class="footer">
-            <p>Fixed Asset Management System &copy; <span id="copyrightYear15"></span> &bull; May Pen Hospital</p>
+            <p>Fixed Asset Management System &copy; <span id="copyrightYear15"></span> &bull; Black River Hospital</p>
         </div>
     </div>
 
@@ -17004,7 +17004,7 @@
 
             var printWindow = window.open('', '_blank');
             printWindow.document.write(
-                '<html><head><title>Fiscal Year Report - FY ' + fyReportYear + '/' + (fyReportYear + 1) + '</title>' +
+                '<html><head><title>Fiscal Year Report - FY ' + fyReportYear + '/' + (fyReportYear + 1) + ' - Black River Hospital</title>' +
                 '<style>' +
                     'body { font-family: Arial, sans-serif; margin: 30px; color: #333; }' +
                     '.header { text-align: center; border-bottom: 3px solid #FF6B35; padding-bottom: 20px; margin-bottom: 25px; }' +
@@ -19369,7 +19369,7 @@
                     </style>
                 </head>
                 <body>
-                    <h2>May Pen Hospital</h2>
+                    <h2>Black River Hospital</h2>
                     <h3>Fixed Asset QR Code</h3>
                     <img src="${qrImageData}" width="250" height="250" alt="QR Code">
                     <div class="qr-label">
@@ -19501,7 +19501,7 @@
             printWindow.document.write(`
                 <html>
                 <head>
-                    <title>Batch QR Codes - May Pen Hospital</title>
+                    <title>Batch QR Codes - Black River Hospital</title>
                     <style>
                         body { font-family: Arial, sans-serif; padding: 20px; }
                         h2 { text-align: center; margin-bottom: 30px; }
@@ -19512,7 +19512,7 @@
                     </style>
                 </head>
                 <body>
-                    <h2>May Pen Hospital - Asset QR Codes</h2>
+                    <h2>Black River Hospital - Asset QR Codes</h2>
                     <p style="text-align: center; color: #666;">Generated: ${new Date().toLocaleString()}</p>
                     <div class="qr-grid">
                         ${qrImagesHTML}
@@ -19662,7 +19662,7 @@
                 // Not a valid URL, treat as plain asset code
             }
 
-            // Check if it looks like an asset code (e.g., MPH-001-2025)
+            // Check if it looks like an asset code (e.g., BRH-001-2025)
             const assetCodePattern = /^[A-Z]{2,5}-[A-Z]{0,3}-?\d{1,4}-?\d{0,4}-?\d{2,4}$/i;
             if (assetCodePattern.test(text.trim())) {
                 return text.trim();
@@ -20113,7 +20113,7 @@
             printWindow.document.write(`
                 <html>
                 <head>
-                    <title>Sheet Data Report - May Pen Hospital</title>
+                    <title>Sheet Data Report - Black River Hospital</title>
                     <style>
                         body {
                             font-family: Arial, sans-serif;
@@ -20237,7 +20237,7 @@
                 </head>
                 <body>
                     <div class="header">
-                        <div class="logo">🏥 May Pen Hospital</div>
+                        <div class="logo">🏥 Black River Hospital</div>
                         <h1>Sheet Data Report</h1>
                         <h2>${filterDesc}</h2>
                         <div class="timestamp">Generated: ${new Date().toLocaleString()}</div>
@@ -20283,7 +20283,7 @@
                     </table>
 
                     <div class="footer">
-                        <p>May Pen Hospital - Fixed Asset Management System</p>
+                        <p>Black River Hospital - Fixed Asset Management System</p>
                         <p>This report contains ${totalAssets} assets with a total value of JMD ${formatCurrency(totalValue)}</p>
                     </div>
 
@@ -20794,7 +20794,7 @@
             printWindow.document.write(`
                 <html>
                 <head>
-                    <title>${reportType.charAt(0).toUpperCase() + reportType.slice(1)} Report - May Pen Hospital</title>
+                    <title>${reportType.charAt(0).toUpperCase() + reportType.slice(1)} Report - Black River Hospital</title>
                     <style>
                         body { font-family: Arial, sans-serif; margin: 20px; }
                         .header { text-align: center; border-bottom: 3px solid #FF6B35; padding-bottom: 20px; margin-bottom: 30px; }
@@ -20807,7 +20807,7 @@
                 </head>
                 <body>
                     <div class="header">
-                        ${includeLogos ? '<div class="logo">🏥 May Pen Hospital</div>' : ''}
+                        ${includeLogos ? '<div class="logo">🏥 Black River Hospital</div>' : ''}
                         <h1>${reportType.charAt(0).toUpperCase() + reportType.slice(1)} Report</h1>
                         <h2>Fixed Asset Management System</h2>
                         ${includeTimestamp ? `<div class="timestamp">Generated: ${new Date().toLocaleString()}</div>` : ''}
@@ -21840,7 +21840,7 @@
             printWindow.document.write(`
                 <html>
                 <head>
-                    <title>Monthly Asset Report - ${monthNames[month]} ${actualYear}</title>
+                    <title>Monthly Asset Report - ${monthNames[month]} ${actualYear} - Black River Hospital</title>
                     <style>
                         body {
                             font-family: Arial, sans-serif;
@@ -21955,7 +21955,7 @@
                 </head>
                 <body>
                     <div class="header">
-                        <div class="logo">🏥 May Pen Hospital</div>
+                        <div class="logo">🏥 Black River Hospital</div>
                         <h1>Monthly Asset Inventory Report</h1>
                         <h2>${monthNames[month]} ${actualYear}</h2>
                         <div class="fiscal-year">Fiscal Year ${currentFiscalYear}/${currentFiscalYear + 1}</div>
@@ -22020,7 +22020,7 @@
                     <div class="footer">
                         <div class="timestamp">Generated: ${new Date().toLocaleString()}</div>
                         <p><strong>Fixed Asset Management System</strong></p>
-                        <p>© ${new Date().getFullYear()} May Pen Hospital • All Rights Reserved</p>
+                        <p>© ${new Date().getFullYear()} Black River Hospital • All Rights Reserved</p>
                     </div>
 
                     <script>
@@ -22200,10 +22200,10 @@
                 const stored = localStorage.getItem('portalHeadingSettings');
                 if (stored) {
                     const settings = JSON.parse(stored);
-                    return settings.hospitalName || 'May Pen Hospital';
+                    return settings.hospitalName || 'Black River Hospital';
                 }
             } catch(e) {}
-            return 'May Pen Hospital';
+            return 'Black River Hospital';
         }
 
         // Animate a number counting up from 0 to target
@@ -22289,7 +22289,7 @@
 
             const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
             XLSX.utils.book_append_sheet(wb, ws, 'Assets');
-            XLSX.writeFile(wb, `MayPen_Asset_Report_${new Date().toISOString().split('T')[0]}_Black_River_Hospital.xlsx`);
+            XLSX.writeFile(wb, `BlackRiver_Asset_Report_${new Date().toISOString().split('T')[0]}_Black_River_Hospital.xlsx`);
         }
         
         // ============================================
@@ -25365,7 +25365,7 @@
                 <!DOCTYPE html>
                 <html>
                 <head>
-                    <title>Board of Survey - Disposal Records - May Pen Hospital</title>
+                    <title>Board of Survey - Disposal Records - Black River Hospital</title>
                     <style>
                         * { margin: 0; padding: 0; box-sizing: border-box; }
                         body {
@@ -25525,7 +25525,7 @@
                     <div class="header">
                         <h1>BOARD OF SURVEY</h1>
                         <h2>Disposal of Obsolete and Damaged Assets</h2>
-                        <h2>May Pen Hospital</h2>
+                        <h2>Black River Hospital</h2>
                         <p>Generated on: ${new Date().toLocaleString()}</p>
                     </div>
 
@@ -25606,7 +25606,7 @@
                             </div>
                         </div>
                         <div class="footer-note">
-                            <p>Board of Survey Report - May Pen Hospital</p>
+                            <p>Board of Survey Report - Black River Hospital</p>
                             <p>This is a computer-generated document.</p>
                         </div>
                     </div>
@@ -29419,7 +29419,7 @@
             const printContent = `<!DOCTYPE html>
             <html>
             <head>
-                <title>Asset Register - Category Report</title>
+                <title>Asset Register - Category Report - Black River Hospital</title>
                 <style>
                     * { margin: 0; padding: 0; box-sizing: border-box; }
                     body { font-family: Arial, sans-serif; font-size: 10px; line-height: 1.4; color: #333; padding: 15px; }

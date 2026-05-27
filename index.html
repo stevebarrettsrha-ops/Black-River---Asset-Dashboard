@@ -11517,7 +11517,7 @@
         const GOOGLE_DRIVE_CONFIG = {
             CLIENT_ID: '247452816806-9rt0qncbiomb45abhg9hg3agunfec8uc.apps.googleusercontent.com',
             FOLDER_ID: '1GJBv5ic4rA_6_w-4diyoTJtJDh-P7zdn',
-            BACKUP_FILE_NAME: 'ASSET_DASHBOARD_BACKUP.json',
+            BACKUP_FILE_NAME: 'ASSET_DASHBOARD_BACKUP_Black_River_Hospital.json',
             SCOPES: 'https://www.googleapis.com/auth/drive.file'
         };
 
@@ -12453,12 +12453,12 @@
                 const portalHeadingObj = JSON.parse(localStorage.getItem('portalHeadingSettings') || 'null');
 
                 // Save separate data files to the dashboard subfolder
-                await uploadDashboardFile('Assets.json', 'assets', { ...meta, assets: assetsArr, qrCodeRegistry: qrCodesObj, deletedAssetIds: deletedIdsArr });
-                await uploadDashboardFile('Audit Trail.json', 'audit', { ...meta, auditTrail: auditArr });
-                await uploadDashboardFile('Configuration.json', 'config', { ...meta, departments: deptsArr, categories: catsArr, portalHeadingSettings: portalHeadingObj, localUserSettings: localUserSettings });
-                await uploadDashboardFile('Local Users.json', 'users', { ...meta, localUsers: localUsers });
-                await uploadDashboardFile('Disposal Records.json', 'disposal', { ...meta, disposalRecords: disposalArr, disposalDeletedIds: disposalDelIdsArr });
-                await uploadDashboardFile('Portal Users.json', 'portal', { ...meta, portalUserAccounts: portalUsersArr });
+                await uploadDashboardFile('Assets_Black_River_Hospital.json', 'assets', { ...meta, assets: assetsArr, qrCodeRegistry: qrCodesObj, deletedAssetIds: deletedIdsArr });
+                await uploadDashboardFile('Audit_Trail_Black_River_Hospital.json', 'audit', { ...meta, auditTrail: auditArr });
+                await uploadDashboardFile('Configuration_Black_River_Hospital.json', 'config', { ...meta, departments: deptsArr, categories: catsArr, portalHeadingSettings: portalHeadingObj, localUserSettings: localUserSettings });
+                await uploadDashboardFile('Local_Users_Black_River_Hospital.json', 'users', { ...meta, localUsers: localUsers });
+                await uploadDashboardFile('Disposal_Records_Black_River_Hospital.json', 'disposal', { ...meta, disposalRecords: disposalArr, disposalDeletedIds: disposalDelIdsArr });
+                await uploadDashboardFile('Portal_Users_Black_River_Hospital.json', 'portal', { ...meta, portalUserAccounts: portalUsersArr });
 
                 // Also save combined backup for auto-sync compatibility
                 const combinedBackup = {

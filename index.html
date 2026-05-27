@@ -15927,7 +15927,7 @@
             const url = URL.createObjectURL(dataBlob);
             const link = document.createElement('a');
             link.href = url;
-            link.download = `asset-inventory-${new Date().toISOString().split('T')[0]}.json`;
+            link.download = `asset-inventory-${new Date().toISOString().split('T')[0]}_Black_River_Hospital.json`;
             link.click();
             URL.revokeObjectURL(url);
             alert('✅ Data exported successfully!');
@@ -15969,7 +15969,7 @@
             const ws = XLSX.utils.json_to_sheet(exportData);
             const wb = XLSX.utils.book_new();
             XLSX.utils.book_append_sheet(wb, ws, 'Assets');
-            XLSX.writeFile(wb, `asset-inventory-${new Date().toISOString().split('T')[0]}.xlsx`);
+            XLSX.writeFile(wb, `asset-inventory-${new Date().toISOString().split('T')[0]}_Black_River_Hospital.xlsx`);
             alert('✅ Data exported to Excel successfully!');
         }
 
@@ -16083,7 +16083,7 @@
                 const url = URL.createObjectURL(dataBlob);
                 const link = document.createElement('a');
                 link.href = url;
-                link.download = `asset-complete-backup-${new Date().toISOString().split('T')[0]}.json`;
+                link.download = `asset-complete-backup-${new Date().toISOString().split('T')[0]}_Black_River_Hospital.json`;
                 link.click();
                 URL.revokeObjectURL(url);
 
@@ -17080,7 +17080,7 @@
             var blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
             var link = document.createElement('a');
             link.href = URL.createObjectURL(blob);
-            link.download = 'Fiscal_Year_Report_FY' + fyReportYear + '_' + (fyReportYear + 1) + (selectedCategory ? '_' + selectedCategory.replace(/[^a-zA-Z0-9]/g, '_') : '') + '.csv';
+            link.download = 'Fiscal_Year_Report_FY' + fyReportYear + '_' + (fyReportYear + 1) + (selectedCategory ? '_' + selectedCategory.replace(/[^a-zA-Z0-9]/g, '_') : '') + '_Black_River_Hospital.csv';
             link.click();
         }
 
@@ -19100,7 +19100,7 @@
             
             const ws = XLSX.utils.aoa_to_sheet(warrantyData);
             XLSX.utils.book_append_sheet(wb, ws, 'Warranty Report');
-            XLSX.writeFile(wb, `Warranty_Report_${new Date().toISOString().split('T')[0]}.xlsx`);
+            XLSX.writeFile(wb, `Warranty_Report_${new Date().toISOString().split('T')[0]}_Black_River_Hospital.xlsx`);
         }
 
         // Warranty editing functionality
@@ -20047,7 +20047,7 @@
 
             const ws = XLSX.utils.aoa_to_sheet(sheetData);
             XLSX.utils.book_append_sheet(wb, ws, 'Sheet Data');
-            XLSX.writeFile(wb, `Asset_Sheet_Data_${new Date().toISOString().split('T')[0]}.xlsx`);
+            XLSX.writeFile(wb, `Asset_Sheet_Data_${new Date().toISOString().split('T')[0]}_Black_River_Hospital.xlsx`);
         }
 
         function exportSheetDataPDF() {
@@ -20757,7 +20757,7 @@
 
             const ws = XLSX.utils.aoa_to_sheet(auditData);
             XLSX.utils.book_append_sheet(wb, ws, 'Audit Trail');
-            XLSX.writeFile(wb, `Audit_Trail_${new Date().toISOString().split('T')[0]}.xlsx`);
+            XLSX.writeFile(wb, `Audit_Trail_${new Date().toISOString().split('T')[0]}_Black_River_Hospital.xlsx`);
         }
 
         // ============================================
@@ -22289,7 +22289,7 @@
 
             const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
             XLSX.utils.book_append_sheet(wb, ws, 'Assets');
-            XLSX.writeFile(wb, `MayPen_Asset_Report_${new Date().toISOString().split('T')[0]}.xlsx`);
+            XLSX.writeFile(wb, `MayPen_Asset_Report_${new Date().toISOString().split('T')[0]}_Black_River_Hospital.xlsx`);
         }
         
         // ============================================
@@ -25321,7 +25321,7 @@
 
             const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
             XLSX.utils.book_append_sheet(wb, ws, 'Disposal Records');
-            XLSX.writeFile(wb, `BoardOfSurvey_DisposalRecords_${new Date().toISOString().split('T')[0]}.xlsx`);
+            XLSX.writeFile(wb, `BoardOfSurvey_DisposalRecords_${new Date().toISOString().split('T')[0]}_Black_River_Hospital.xlsx`);
         }
 
         // Print disposal records
@@ -28154,7 +28154,7 @@
 
             const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
             XLSX.utils.book_append_sheet(wb, ws, 'Asset Register');
-            XLSX.writeFile(wb, `AssetRegister_AllYears_${new Date().toISOString().split('T')[0]}.xlsx`);
+            XLSX.writeFile(wb, `AssetRegister_AllYears_${new Date().toISOString().split('T')[0]}_Black_River_Hospital.xlsx`);
         }
 
         // Print asset register

@@ -11650,8 +11650,13 @@
         // Auto-sync state
         let autoSyncInterval = null;
         let autoSyncInProgress = false;
-        const AUTO_SYNC_INTERVAL_MS = 120000; // 2 minutes
+        const AUTO_SYNC_INTERVAL_MS = 120000; // 2 minutes (event-driven, only when dirty)
         let dataIsDirty = false;
+
+        // Scheduled full merge-to-cloud (guaranteed, regardless of the dirty flag and
+        // independent of single/multi-file mode) — protects against data loss.
+        let scheduledSyncInterval = null;
+        const SCHEDULED_SYNC_INTERVAL_MS = 30 * 60 * 1000; // 30 minutes
 
         // Login-screen Google gate state
         let cloudGatePending = false;   // true while a gate-initiated Google sign-in is in flight
@@ -11992,9 +11997,15 @@
         // AUTO-SYNC: Merge & sync every 5 seconds
         // ============================================
         function startAutoSync() {
-            if (autoSyncInterval) return; // Already running
-            console.log('[AutoSync] Starting auto-sync every ' + (AUTO_SYNC_INTERVAL_MS / 1000) + 's');
-            autoSyncInterval = setInterval(performAutoSync, AUTO_SYNC_INTERVAL_MS);
+            if (!autoSyncInterval) {
+                console.log('[AutoSync] Starting auto-sync every ' + (AUTO_SYNC_INTERVAL_MS / 1000) + 's');
+                autoSyncInterval = setInterval(performAutoSync, AUTO_SYNC_INTERVAL_MS);
+            }
+            // Guaranteed full merge-to-cloud every 30 minutes (no-data-loss safety net)
+            if (!scheduledSyncInterval) {
+                console.log('[ScheduledSync] Starting 30-minute cloud merge');
+                scheduledSyncInterval = setInterval(performScheduledCloudMerge, SCHEDULED_SYNC_INTERVAL_MS);
+            }
         }
 
         function stopAutoSync() {
@@ -12003,136 +12014,114 @@
                 autoSyncInterval = null;
                 console.log('[AutoSync] Stopped');
             }
+            if (scheduledSyncInterval) {
+                clearInterval(scheduledSyncInterval);
+                scheduledSyncInterval = null;
+                console.log('[ScheduledSync] Stopped');
+            }
         }
 
-        async function performAutoSync() {
+        // Build the merged cloud "data" object from Google Drive — preferring the
+        // separate dashboard files, falling back to the combined backup file.
+        async function fetchCloudDataObject() {
+            if (!isCloudConnected || !googleAccessToken) return null;
+            if (!cloudFileId && Object.keys(dataFileIds).length === 0) {
+                await findExistingBackupFile();
+            }
+
+            const assetsFile = await downloadDashboardFile('assets');
+            const auditFile = await downloadDashboardFile('audit');
+            const configFile = await downloadDashboardFile('config');
+            const usersFile = await downloadDashboardFile('users');
+            const disposalFile = await downloadDashboardFile('disposal');
+            const portalFile = await downloadDashboardFile('portal');
+
+            if (assetsFile || auditFile || configFile || usersFile || disposalFile || portalFile) {
+                return {
+                    assets: (assetsFile && assetsFile.assets) || [],
+                    qrCodeRegistry: (assetsFile && assetsFile.qrCodeRegistry) || null,
+                    deletedAssetIds: (assetsFile && assetsFile.deletedAssetIds) || [],
+                    auditTrail: (auditFile && auditFile.auditTrail) || [],
+                    departments: (configFile && configFile.departments) || [],
+                    categories: (configFile && configFile.categories) || [],
+                    portalHeadingSettings: (configFile && configFile.portalHeadingSettings) || null,
+                    localUserSettings: (configFile && configFile.localUserSettings) || {},
+                    localUsers: (usersFile && usersFile.localUsers) || [],
+                    disposalRecords: (disposalFile && disposalFile.disposalRecords) || [],
+                    disposalDeletedIds: (disposalFile && disposalFile.disposalDeletedIds) || [],
+                    portalUserAccounts: (portalFile && portalFile.portalUserAccounts) || []
+                };
+            }
+
+            if (cloudFileId && cloudFileId !== 'DASHBOARD_MULTI') {
+                try {
+                    const resp = await fetch(
+                        `https://www.googleapis.com/drive/v3/files/${cloudFileId}?alt=media`,
+                        { headers: { 'Authorization': `Bearer ${googleAccessToken}` } }
+                    );
+                    if (resp.ok) {
+                        const backup = await resp.json();
+                        return backup.data || null;
+                    }
+                } catch (e) {
+                    console.error('[ScheduledSync] Failed to download cloud data:', e);
+                }
+            }
+            return null;
+        }
+
+        // Guaranteed periodic merge: pull cloud data, union-merge it into local (so no
+        // record from either side is lost), then write the merged result back to Drive as
+        // both the separate data files AND the combined backup. Runs every 30 minutes and
+        // also on demand (e.g. when the tab is hidden).
+        async function performScheduledCloudMerge(reason) {
             if (autoSyncInProgress) return;
             if (!isCloudConnected || !googleAccessToken) return;
-            if (!dataIsDirty) return;
-            // Multi-file mode uses manual save; skip auto-sync to avoid invalid Drive requests
-            if (cloudFileId === 'DASHBOARD_MULTI') return;
+            if (!currentUser) return; // only sync an active session's working data
 
             autoSyncInProgress = true;
-
             try {
-                // Ensure we have a real file ID (not the sentinel)
-                if (!cloudFileId || cloudFileId === 'DASHBOARD_MULTI') {
-                    const savedFileId = localStorage.getItem('assetDashboardCloudFileId');
-                    if (savedFileId && savedFileId !== 'DASHBOARD_MULTI') {
-                        cloudFileId = savedFileId;
-                    } else {
-                        autoSyncInProgress = false;
-                        return;
-                    }
+                // Step 1: merge the latest cloud data into local (union — never drops data)
+                const cloudData = await fetchCloudDataObject();
+                if (cloudData) {
+                    mergeCloudIntoLocal(cloudData);
                 }
-
-                // Step 1: Download cloud data
-                let cloudData = null;
-                if (cloudFileId) {
-                    try {
-                        const dlResp = await fetch(
-                            `https://www.googleapis.com/drive/v3/files/${cloudFileId}?alt=media`,
-                            { headers: { 'Authorization': `Bearer ${googleAccessToken}` } }
-                        );
-                        if (dlResp.status === 401) {
-                            console.log('[AutoSync] Token expired');
-                            stopAutoSync();
-                            return;
-                        }
-                        if (dlResp.ok) {
-                            cloudData = await dlResp.json();
-                        }
-                    } catch (e) {
-                        console.log('[AutoSync] Download error:', e.message);
-                        autoSyncInProgress = false;
-                        return;
-                    }
-                }
-
-                // Step 2: Merge cloud data into local
-                if (cloudData && cloudData.data) {
-                    mergeCloudIntoLocal(cloudData.data);
-                }
-
-                // Step 3: Upload merged local data to cloud
-                const backupData = {
-                    version: '1.4',
-                    timestamp: new Date().toISOString(),
-                    savedBy: currentUser ? currentUser.username : 'Unknown',
-                    data: {
-                        assets: loadAssetsFromStorage(),
-                        qrCodeRegistry: loadQRRegistry(),
-                        auditTrail: loadAuditFromStorage(),
-                        departments: JSON.parse(localStorage.getItem(DEPARTMENTS_STORAGE_KEY) || '[]'),
-                        categories: JSON.parse(localStorage.getItem(CATEGORIES_STORAGE_KEY) || '[]'),
-                        disposalRecords: (_dbGet(DISPOSAL_STORAGE_KEY) || []),
-                        deletedAssetIds: (_dbGet(ASSET_DELETED_IDS_KEY) || []),
-                        disposalDeletedIds: (_dbGet(DISPOSAL_DELETED_IDS_KEY) || []),
-                        portalUserAccounts: JSON.parse(localStorage.getItem('portalUserAccounts') || '[]'),
-                        portalHeadingSettings: JSON.parse(localStorage.getItem('portalHeadingSettings') || 'null'),
-                        localUserSettings: localUserSettings,
-                        localUsers: localUsers // Backup local users (passwords are hashed)
-                    }
-                };
-
-                const blob = new Blob([JSON.stringify(backupData)], { type: 'application/json' });
-
-                let uploadResp;
-                if (cloudFileId) {
-                    uploadResp = await fetch(
-                        `https://www.googleapis.com/upload/drive/v3/files/${cloudFileId}?uploadType=media`,
-                        {
-                            method: 'PATCH',
-                            headers: {
-                                'Authorization': `Bearer ${googleAccessToken}`,
-                                'Content-Type': 'application/json'
-                            },
-                            body: blob
-                        }
-                    );
+                // Step 2: write the merged local data back to the cloud (all files)
+                const ok = await saveToCloud(true);
+                if (ok) {
+                    dataIsDirty = false; // only clear after a confirmed upload, else retry next cycle
+                    console.log('[ScheduledSync] Cloud merge complete' + (reason ? ' (' + reason + ')' : ''));
                 } else {
-                    const autoFolderId = await findOrCreateDashboardFolder();
-                    const metadata = {
-                        name: GOOGLE_DRIVE_CONFIG.BACKUP_FILE_NAME,
-                        parents: [autoFolderId],
-                        mimeType: 'application/json'
-                    };
-                    const formData = new FormData();
-                    formData.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
-                    formData.append('file', blob);
-                    uploadResp = await fetch(
-                        'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,name',
-                        {
-                            method: 'POST',
-                            headers: { 'Authorization': `Bearer ${googleAccessToken}` },
-                            body: formData
-                        }
-                    );
-                    if (uploadResp.ok) {
-                        const result = await uploadResp.json();
-                        cloudFileId = result.id;
-                        localStorage.setItem('assetDashboardCloudFileId', cloudFileId);
-                    }
+                    console.warn('[ScheduledSync] Upload did not confirm; will retry next cycle');
                 }
-
-                if (uploadResp && uploadResp.ok) {
-                    dataIsDirty = false; // Only clear after confirmed successful upload
-                    lastSyncTime = new Date();
-                    localStorage.setItem('assetDashboardLastSyncTime', lastSyncTime.toISOString());
-                    if (typeof updateLastSyncDisplay === 'function') updateLastSyncDisplay();
-                } else if (uploadResp && uploadResp.status === 401) {
-                    console.log('[AutoSync] Token expired on upload');
-                    stopAutoSync();
-                } else {
-                    dataIsDirty = true; // Retain dirty flag so next interval retries
-                }
-
             } catch (e) {
-                dataIsDirty = true; // Retain dirty flag so next interval retries
-                console.log('[AutoSync] Error:', e.message);
+                console.error('[ScheduledSync] error:', e);
             } finally {
                 autoSyncInProgress = false;
             }
+        }
+
+        // Best-effort flush when the tab is hidden or about to close so unsynced changes
+        // are pushed before the scheduled 30-minute cycle. Data already lives in
+        // localStorage/IndexedDB, so anything that doesn't make it now syncs next session.
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden && dataIsDirty && isCloudConnected && googleAccessToken && currentUser) {
+                performScheduledCloudMerge('tab hidden');
+            }
+        });
+        window.addEventListener('pagehide', () => {
+            if (dataIsDirty && isCloudConnected && googleAccessToken && currentUser) {
+                performScheduledCloudMerge('page hide');
+            }
+        });
+
+        // Event-driven auto-sync: when local data has changed, run the same robust
+        // merge-and-save used by the 30-minute timer. This keeps the separate data
+        // files AND the combined backup consistent on every sync (no stale files,
+        // no data loss). performScheduledCloudMerge owns all the guards.
+        async function performAutoSync() {
+            if (!dataIsDirty) return;
+            await performScheduledCloudMerge('auto-sync');
         }
 
         function mergeCloudIntoLocal(cloudDataObj) {
@@ -12716,6 +12705,7 @@
 
                 setCloudSyncing(false);
                 if (!silent) alert(`Data saved to Google Drive successfully!\n\nSaved to: "${DASHBOARD_FOLDER_NAME}" subfolder\n6 separate data files saved\nSaved by: ${lastSavedBy}`);
+                return true;
 
             } catch (error) {
                 console.error('Error saving to cloud:', error);
@@ -12727,6 +12717,7 @@
                 } else if (!silent) {
                     alert(`Failed to save to cloud: ${error.message}`);
                 }
+                return false;
             }
         }
 
@@ -13465,6 +13456,7 @@
 
         function saveLocalUsers() {
             localStorage.setItem('assetDashboardLocalUsers', JSON.stringify(localUsers));
+            if (typeof dataIsDirty !== 'undefined') dataIsDirty = true;
         }
 
         // Merge user accounts coming from a cloud backup into the local user list.
@@ -14178,6 +14170,8 @@
         // Synchronous write to cache + async persist to IndexedDB
         function _dbSet(key, value) {
             _dbCache[key] = value;
+            // Mark data as needing a cloud sync (covers assets, audit, disposal, etc.)
+            if (typeof dataIsDirty !== 'undefined') dataIsDirty = true;
             if (_idbReady) {
                 _idbSet(key, value).catch(err => {
                     console.error(`[IDB] Write error for "${key}":`, err);
@@ -14557,6 +14551,7 @@
         function saveDepartments(departments) {
             try {
                 localStorage.setItem(DEPARTMENTS_STORAGE_KEY, JSON.stringify(departments));
+                if (typeof dataIsDirty !== 'undefined') dataIsDirty = true;
                 return true;
             } catch (error) {
                 console.error('Error saving departments:', error);
@@ -14626,6 +14621,7 @@
         function saveCategories(categories) {
             try {
                 localStorage.setItem(CATEGORIES_STORAGE_KEY, JSON.stringify(categories));
+                if (typeof dataIsDirty !== 'undefined') dataIsDirty = true;
                 return true;
             } catch (error) {
                 console.error('Error saving categories:', error);
@@ -19564,6 +19560,7 @@
         // Save QR code registry to localStorage
         function saveQRRegistry(registry) {
             localStorage.setItem('qrCodeRegistry', JSON.stringify(registry));
+            if (typeof dataIsDirty !== 'undefined') dataIsDirty = true;
         }
 
         // Register a QR code with asset data

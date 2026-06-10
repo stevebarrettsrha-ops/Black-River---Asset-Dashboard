@@ -12017,6 +12017,33 @@
             }
         }
 
+        // Gather user accounts from BOTH the separate Local_Users file and the combined
+        // backup file. Returning both copies lets applyCloudUsers() pick the most recent
+        // by updatedAt — important when two devices changed passwords and Google Drive
+        // ends up holding two different copies.
+        async function collectCloudUsers() {
+            const out = [];
+            try {
+                const usersFile = await downloadDashboardFile('users');
+                if (usersFile && Array.isArray(usersFile.localUsers)) out.push(...usersFile.localUsers);
+            } catch (e) { /* ignore */ }
+            try {
+                if (cloudFileId && cloudFileId !== 'DASHBOARD_MULTI') {
+                    const resp = await fetch(
+                        `https://www.googleapis.com/drive/v3/files/${cloudFileId}?alt=media`,
+                        { headers: { 'Authorization': `Bearer ${googleAccessToken}` } }
+                    );
+                    if (resp.ok) {
+                        const backup = await resp.json();
+                        if (backup && backup.data && Array.isArray(backup.data.localUsers)) {
+                            out.push(...backup.data.localUsers);
+                        }
+                    }
+                }
+            } catch (e) { /* ignore */ }
+            return out;
+        }
+
         // Build the merged cloud "data" object from Google Drive — preferring the
         // separate dashboard files, falling back to the combined backup file.
         async function fetchCloudDataObject() {
@@ -12033,6 +12060,9 @@
             const portalFile = await downloadDashboardFile('portal');
 
             if (assetsFile || auditFile || configFile || usersFile || disposalFile || portalFile) {
+                // Combine users from the separate file AND the combined backup so the
+                // merge can resolve to the most-recently-changed password.
+                const mergedUsers = await collectCloudUsers();
                 return {
                     assets: (assetsFile && assetsFile.assets) || [],
                     qrCodeRegistry: (assetsFile && assetsFile.qrCodeRegistry) || null,
@@ -12042,7 +12072,7 @@
                     categories: (configFile && configFile.categories) || [],
                     portalHeadingSettings: (configFile && configFile.portalHeadingSettings) || null,
                     localUserSettings: (configFile && configFile.localUserSettings) || {},
-                    localUsers: (usersFile && usersFile.localUsers) || [],
+                    localUsers: mergedUsers.length ? mergedUsers : ((usersFile && usersFile.localUsers) || []),
                     disposalRecords: (disposalFile && disposalFile.disposalRecords) || [],
                     disposalDeletedIds: (disposalFile && disposalFile.disposalDeletedIds) || [],
                     portalUserAccounts: (portalFile && portalFile.portalUserAccounts) || []
@@ -12858,7 +12888,10 @@
 
                 // Restore/merge local user accounts (passwords + requirePasswordChange flag)
                 // so account changes made on another device take effect on this one.
-                applyCloudUsers(backupData.data.localUsers);
+                // Combine both Drive copies (separate file + combined backup) so the most
+                // recently changed password wins.
+                const cloudUsersForRestore = await collectCloudUsers();
+                applyCloudUsers(cloudUsersForRestore.length ? cloudUsersForRestore : backupData.data.localUsers);
 
                 // Refresh the UI with restored data
                 if (typeof loadData === 'function') loadData();
@@ -13338,8 +13371,10 @@
                     saveLocalUserSettings();
                 }
 
-                // Restore/merge local user accounts from the cloud backup
-                applyCloudUsers(backupData.data.localUsers);
+                // Restore/merge local user accounts from the cloud backup. Combine both
+                // Drive copies so the most recently changed password wins.
+                const cloudUsersOnLogin = await collectCloudUsers();
+                applyCloudUsers(cloudUsersOnLogin.length ? cloudUsersOnLogin : backupData.data.localUsers);
 
                 // Refresh the UI with restored data
                 if (typeof loadData === 'function') loadData();
@@ -13880,8 +13915,9 @@
 
             if (!hasErrors) {
                 localStorage.setItem('assetDashboardLocalUsers', JSON.stringify(localUsers));
-                // Push account changes to Google Drive so other devices pick them up
-                if (isCloudConnected && googleAccessToken) saveToCloud(true);
+                // Merge with the cloud first, then push — so we never overwrite a newer
+                // change another device made to a different account.
+                if (isCloudConnected && googleAccessToken) performScheduledCloudMerge('account change');
 
                 let message = '';
                 if (savedCount > 0) message += `${savedCount} new user(s) created. `;
@@ -13935,8 +13971,9 @@
                 localUsers[userIndex].requirePasswordChange = false;
                 localUsers[userIndex].updatedAt = new Date().toISOString(); // For cross-device merge
                 saveLocalUsers();
-                // Push the change to Google Drive immediately so other devices pick it up
-                if (isCloudConnected && googleAccessToken) saveToCloud(true);
+                // Merge with the cloud first, then push — keeps the most recent password
+                // and avoids clobbering a newer change made on another device.
+                if (isCloudConnected && googleAccessToken) performScheduledCloudMerge('password change');
             }
 
             closeChangePasswordModal();
@@ -13978,8 +14015,9 @@
                     saveLocalUsers();
                     currentUser.requirePasswordChange = false;
                     currentUser.passwordHash = localUsers[userIndex].passwordHash;
-                    // Push the change to Google Drive immediately so other devices pick it up
-                    if (isCloudConnected && googleAccessToken) saveToCloud(true);
+                    // Merge with the cloud first, then push — keeps the most recent password
+                    // and avoids clobbering a newer change made on another device.
+                    if (isCloudConnected && googleAccessToken) performScheduledCloudMerge('password change');
                 }
             }
 

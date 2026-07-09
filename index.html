@@ -1500,6 +1500,76 @@
             color: var(--primary-green);
         }
 
+        .month-comment-section {
+            margin-top: 15px;
+            padding-top: 12px;
+            border-top: 2px solid var(--border-color);
+        }
+
+        .month-comment-label {
+            font-size: 0.85em;
+            font-weight: 600;
+            color: var(--text-secondary);
+            margin-bottom: 6px;
+        }
+
+        .month-comment-input {
+            width: 100%;
+            min-height: 50px;
+            padding: 8px 10px;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            background: var(--table-hover);
+            color: var(--text-primary);
+            font-family: inherit;
+            font-size: 0.85em;
+            resize: vertical;
+            box-sizing: border-box;
+            transition: border-color 0.2s ease, background 0.3s ease;
+        }
+
+        .month-comment-input:focus {
+            outline: none;
+            border-color: var(--primary-orange);
+        }
+
+        .month-comment-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 10px;
+            margin-top: 8px;
+        }
+
+        .month-comment-meta {
+            font-size: 0.75em;
+            color: var(--text-secondary);
+            flex: 1;
+        }
+
+        .btn-save-comment {
+            background: var(--primary-green);
+            color: white;
+            border: none;
+            padding: 6px 14px;
+            border-radius: 6px;
+            font-size: 0.8em;
+            font-weight: 600;
+            cursor: pointer;
+            white-space: nowrap;
+            margin-left: auto;
+            transition: background 0.2s ease, transform 0.1s ease;
+        }
+
+        .btn-save-comment:hover {
+            background: #27AE60;
+            transform: translateY(-1px);
+        }
+
+        .btn-save-comment:active {
+            transform: translateY(0);
+        }
+
         .loading {
             text-align: center;
             padding: 50px;
@@ -12072,6 +12142,7 @@
                     categories: (configFile && configFile.categories) || [],
                     portalHeadingSettings: (configFile && configFile.portalHeadingSettings) || null,
                     localUserSettings: (configFile && configFile.localUserSettings) || {},
+                    monthlyComments: (configFile && configFile.monthlyComments) || null,
                     localUsers: mergedUsers.length ? mergedUsers : ((usersFile && usersFile.localUsers) || []),
                     disposalRecords: (disposalFile && disposalFile.disposalRecords) || [],
                     disposalDeletedIds: (disposalFile && disposalFile.disposalDeletedIds) || [],
@@ -12338,6 +12409,11 @@
                     saveLocalUserSettings();
                     dataChanged = true;
                 }
+            }
+
+            // Merge monthly breakdown comments (most recently updated wins per month)
+            if (mergeMonthlyComments(cloudDataObj.monthlyComments)) {
+                dataChanged = true;
             }
 
             // Refresh all views if any data changed
@@ -12669,12 +12745,13 @@
                 const disposalDelIdsArr = (_dbGet(DISPOSAL_DELETED_IDS_KEY) || []);
                 const portalUsersArr = JSON.parse(localStorage.getItem('portalUserAccounts') || '[]');
                 const portalHeadingObj = JSON.parse(localStorage.getItem('portalHeadingSettings') || 'null');
+                const monthlyCommentsObj = loadMonthlyComments();
 
                 // Save separate data files to the dashboard subfolder
                 const uploadResults = await Promise.all([
                     uploadDashboardFile('Assets_Black_River_Hospital.json', 'assets', { ...meta, assets: assetsArr, qrCodeRegistry: qrCodesObj, deletedAssetIds: deletedIdsArr }),
                     uploadDashboardFile('Audit_Trail_Black_River_Hospital.json', 'audit', { ...meta, auditTrail: auditArr }),
-                    uploadDashboardFile('Configuration_Black_River_Hospital.json', 'config', { ...meta, departments: deptsArr, categories: catsArr, portalHeadingSettings: portalHeadingObj, localUserSettings: localUserSettings }),
+                    uploadDashboardFile('Configuration_Black_River_Hospital.json', 'config', { ...meta, departments: deptsArr, categories: catsArr, portalHeadingSettings: portalHeadingObj, localUserSettings: localUserSettings, monthlyComments: monthlyCommentsObj }),
                     uploadDashboardFile('Local_Users_Black_River_Hospital.json', 'users', { ...meta, localUsers: localUsers }),
                     uploadDashboardFile('Disposal_Records_Black_River_Hospital.json', 'disposal', { ...meta, disposalRecords: disposalArr, disposalDeletedIds: disposalDelIdsArr }),
                     uploadDashboardFile('Portal_Users_Black_River_Hospital.json', 'portal', { ...meta, portalUserAccounts: portalUsersArr })
@@ -12689,7 +12766,8 @@
                         departments: deptsArr, categories: catsArr,
                         disposalRecords: disposalArr, deletedAssetIds: deletedIdsArr, disposalDeletedIds: disposalDelIdsArr,
                         portalUserAccounts: portalUsersArr, portalHeadingSettings: portalHeadingObj,
-                        localUserSettings: localUserSettings, localUsers: localUsers
+                        localUserSettings: localUserSettings, localUsers: localUsers,
+                        monthlyComments: monthlyCommentsObj
                     }
                 };
                 const combinedBlob = new Blob([JSON.stringify(combinedBackup, null, 2)], { type: 'application/json' });
@@ -12880,6 +12958,9 @@
                 if (backupData.data.portalHeadingSettings) {
                     localStorage.setItem('portalHeadingSettings', JSON.stringify(backupData.data.portalHeadingSettings));
                 }
+
+                // Restore monthly breakdown comments (merge — newest wins per month)
+                mergeMonthlyComments(backupData.data.monthlyComments);
 
                 if (backupData.data.localUserSettings) {
                     localUserSettings = backupData.data.localUserSettings;
@@ -13090,6 +13171,9 @@
                 if (backupData.data.portalHeadingSettings) {
                     localStorage.setItem('portalHeadingSettings', JSON.stringify(backupData.data.portalHeadingSettings));
                 }
+
+                // Restore monthly breakdown comments (merge — newest wins per month)
+                mergeMonthlyComments(backupData.data.monthlyComments);
 
                 if (backupData.data.localUserSettings) {
                     localUserSettings = backupData.data.localUserSettings;
@@ -13365,6 +13449,9 @@
                 if (backupData.data.portalHeadingSettings) {
                     localStorage.setItem('portalHeadingSettings', JSON.stringify(backupData.data.portalHeadingSettings));
                 }
+
+                // Restore monthly breakdown comments (merge — newest wins per month)
+                mergeMonthlyComments(backupData.data.monthlyComments);
 
                 if (backupData.data.localUserSettings) {
                     localUserSettings = backupData.data.localUserSettings;
@@ -16455,6 +16542,7 @@
                 const departments = loadDepartments();
                 const categories = loadCategories();
                 const warrantyOverrides = JSON.parse(localStorage.getItem('warrantyOverrides') || '{}');
+                const monthlyComments = loadMonthlyComments();
 
                 const completeBackup = {
                     version: '2.0',
@@ -16466,7 +16554,8 @@
                         auditTrail: auditTrail,
                         departments: departments,
                         categories: categories,
-                        warrantyOverrides: warrantyOverrides
+                        warrantyOverrides: warrantyOverrides,
+                        monthlyComments: monthlyComments
                     },
                     summary: {
                         totalAssets: assets.length,
@@ -16629,7 +16718,7 @@
         function processImportData(importedData) {
             const importMode = document.querySelector('input[name="importMode"]:checked')?.value || 'replace';
 
-            let assets, auditTrail, departments, categories, warrantyOverrides;
+            let assets, auditTrail, departments, categories, warrantyOverrides, importedMonthlyComments;
             let isCompleteBackup = false;
 
             // Check if this is the new complete backup format
@@ -16640,6 +16729,7 @@
                 departments = importedData.data.departments || [];
                 categories = importedData.data.categories || [];
                 warrantyOverrides = importedData.data.warrantyOverrides || {};
+                importedMonthlyComments = importedData.data.monthlyComments || null;
 
                 // Show backup info
                 const summary = importedData.summary || {};
@@ -16723,6 +16813,7 @@
                     if (warrantyOverrides && Object.keys(warrantyOverrides).length > 0) {
                         localStorage.setItem('warrantyOverrides', JSON.stringify(warrantyOverrides));
                     }
+                    mergeMonthlyComments(importedMonthlyComments);
                 }
             } else {
                 // Merge mode: add new records, skip duplicates
@@ -16791,6 +16882,9 @@
                         const mergedOverrides = { ...existingOverrides, ...warrantyOverrides };
                         localStorage.setItem('warrantyOverrides', JSON.stringify(mergedOverrides));
                     }
+
+                    // Merge monthly breakdown comments (newest wins per month)
+                    mergeMonthlyComments(importedMonthlyComments);
                 }
             }
 
@@ -22217,6 +22311,15 @@
                 'DEC': 'December', 'JAN': 'January', 'FEB': 'February', 'MAR': 'March'
             };
 
+            // Include the saved month comment (if any) in the printed report
+            const monthComment = getMonthComment(month);
+            const commentSectionHtml = (monthComment && monthComment.text) ? `
+                    <div class="comment-box">
+                        <h3>📝 Comments</h3>
+                        <div class="comment-text">${escapeHtml(monthComment.text)}</div>
+                        <div class="comment-meta">— ${escapeHtml(monthComment.updatedBy || 'Unknown')}, ${new Date(monthComment.updatedAt).toLocaleDateString()}</div>
+                    </div>` : '';
+
             // Build detailed asset table rows
             let tableRows = '';
             allItems.forEach(item => {
@@ -22336,6 +22439,28 @@
                         tr:hover {
                             background: #e8f5e9;
                         }
+                        .comment-box {
+                            background: #fffaf5;
+                            border: 2px solid #FF6B35;
+                            border-radius: 8px;
+                            padding: 15px 20px;
+                            margin: 20px 0;
+                        }
+                        .comment-box h3 {
+                            margin: 0 0 10px 0;
+                            border: none;
+                            padding-bottom: 0;
+                        }
+                        .comment-text {
+                            color: #2C3E50;
+                            line-height: 1.5;
+                            white-space: pre-wrap;
+                        }
+                        .comment-meta {
+                            margin-top: 8px;
+                            font-size: 0.85em;
+                            color: #7f8c8d;
+                        }
                         .footer {
                             text-align: center;
                             margin-top: 30px;
@@ -22353,6 +22478,7 @@
                         @media print {
                             body { margin: 15px; }
                             .summary-box { break-inside: avoid; }
+                            .comment-box { break-inside: avoid; }
                             table { page-break-inside: auto; }
                             tr { page-break-inside: avoid; page-break-after: auto; }
                             thead { display: table-header-group; }
@@ -22402,6 +22528,8 @@
                         </div>
                     </div>
 
+                    ${commentSectionHtml}
+
                     <h3>Detailed Asset Listing (${allItems.length} Items)</h3>
                     <table>
                         <thead>
@@ -22444,6 +22572,78 @@
             printWindow.focus();
         }
 
+        // ============================================
+        // MONTHLY BREAKDOWN COMMENTS
+        // Stored per fiscal year + month: { "2026": { "APR": { text, updatedBy, updatedAt } } }
+        // ============================================
+        const MONTHLY_COMMENTS_KEY = 'monthlyBreakdownComments';
+
+        function loadMonthlyComments() {
+            try { return JSON.parse(localStorage.getItem(MONTHLY_COMMENTS_KEY) || '{}') || {}; }
+            catch (e) { console.error('Corrupt monthly comments data:', e); return {}; }
+        }
+
+        function saveMonthlyComments(comments) {
+            try { localStorage.setItem(MONTHLY_COMMENTS_KEY, JSON.stringify(comments)); }
+            catch (e) { console.error('Failed to save monthly comments:', e); }
+        }
+
+        function getMonthComment(month, fiscalYear) {
+            const all = loadMonthlyComments();
+            const fy = String(fiscalYear !== undefined ? fiscalYear : currentFiscalYear);
+            return (all[fy] && all[fy][month]) || null;
+        }
+
+        // Merge cloud comments into local — the most recently updated entry wins
+        // per fiscal-year/month. Cleared comments (empty text) propagate too.
+        function mergeMonthlyComments(cloudComments) {
+            if (!cloudComments || typeof cloudComments !== 'object') return false;
+            const local = loadMonthlyComments();
+            let changed = false;
+            Object.entries(cloudComments).forEach(([fy, fyComments]) => {
+                if (!fyComments || typeof fyComments !== 'object') return;
+                if (!local[fy]) local[fy] = {};
+                Object.entries(fyComments).forEach(([month, comment]) => {
+                    if (!comment || typeof comment.text !== 'string') return;
+                    const existing = local[fy][month];
+                    if (!existing || new Date(comment.updatedAt || 0) > new Date(existing.updatedAt || 0)) {
+                        local[fy][month] = comment;
+                        changed = true;
+                    }
+                });
+            });
+            if (changed) saveMonthlyComments(local);
+            return changed;
+        }
+
+        function saveMonthComment(month) {
+            const textarea = document.getElementById(`monthComment_${month}`);
+            if (!textarea) return;
+
+            const text = textarea.value.trim();
+            const all = loadMonthlyComments();
+            const fy = String(currentFiscalYear);
+            if (!all[fy]) all[fy] = {};
+
+            // Nothing existed and nothing was typed — no-op
+            if (!text && !all[fy][month]) return;
+
+            all[fy][month] = {
+                text: text,
+                updatedBy: currentUser ? (currentUser.displayName || currentUser.username) : 'Unknown',
+                updatedAt: new Date().toISOString()
+            };
+            saveMonthlyComments(all);
+            if (typeof dataIsDirty !== 'undefined') dataIsDirty = true;
+
+            const actualYear = ['JAN', 'FEB', 'MAR'].includes(month) ? currentFiscalYear + 1 : currentFiscalYear;
+            addAuditEntry('SYSTEM', text ? 'Month Comment Saved' : 'Month Comment Cleared', 'All Departments',
+                `${month} ${actualYear} monthly breakdown comment ${text ? 'updated' : 'cleared'}`,
+                `Monthly Breakdown Comment (${month} ${actualYear})`, 0);
+
+            displayMonthlyBreakdown();
+        }
+
         function displayMonthlyBreakdown() {
             const container = document.getElementById('monthlyBreakdownContainer');
             let html = '';
@@ -22479,6 +22679,11 @@
                     `;
                 });
 
+                const monthComment = getMonthComment(month);
+                const commentMetaHtml = (monthComment && monthComment.text)
+                    ? `<div class="month-comment-meta">Last updated by ${escapeHtml(monthComment.updatedBy || 'Unknown')} on ${new Date(monthComment.updatedAt).toLocaleDateString()}</div>`
+                    : '';
+
                 html += `
                     <div class="month-card ${hasData ? 'has-data' : ''}">
                         <div class="month-header">
@@ -22503,6 +22708,15 @@
                                 <div class="month-stat-value" style="color: var(--primary-orange);">${donatedStats.totalItems}</div>
                             </div>
                             ${categoryStatsHtml}
+                        </div>
+                        <div class="month-comment-section">
+                            <div class="month-comment-label">📝 Comments</div>
+                            <textarea id="monthComment_${month}" class="month-comment-input" rows="2"
+                                placeholder="Add comments for ${month} ${actualYear}...">${monthComment ? escapeHtml(monthComment.text) : ''}</textarea>
+                            <div class="month-comment-footer">
+                                ${commentMetaHtml}
+                                <button class="btn-save-comment" onclick="saveMonthComment('${month}')">💾 Save Comment</button>
+                            </div>
                         </div>
                     </div>
                 `;

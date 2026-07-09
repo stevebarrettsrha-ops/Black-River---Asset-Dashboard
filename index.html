@@ -11716,7 +11716,7 @@
         // Auto-sync state
         let autoSyncInterval = null;
         let autoSyncInProgress = false;
-        const AUTO_SYNC_INTERVAL_MS = 120000; // 2 minutes (event-driven, only when dirty)
+        const AUTO_SYNC_INTERVAL_MS = 15000; // 15 seconds (event-driven, only when dirty)
         let dataIsDirty = false;
 
         // Scheduled full merge-to-cloud (guaranteed, regardless of the dirty flag and
@@ -12060,7 +12060,7 @@
         }
 
         // ============================================
-        // AUTO-SYNC: Merge & sync every 5 seconds
+        // AUTO-SYNC: Merge & sync every 15 seconds (only when data changed)
         // ============================================
         function startAutoSync() {
             if (!autoSyncInterval) {

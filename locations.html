@@ -1,0 +1,2346 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Location Records - Black River Hospital</title>
+    <style>
+        :root {
+            --primary-orange: #FF6B35;
+            --dark-orange: #E55934;
+            --primary-green: #2ECC71;
+            --dark-green: #27AE60;
+            --dark-gray: #2C3E50;
+            --light-gray: #ECF0F1;
+            --bg-primary: #f5f7fa;
+            --bg-card: #ffffff;
+            --text-primary: #2C3E50;
+            --text-secondary: #7f8c8d;
+            --border-color: #e0e0e0;
+            --table-hover: #f8f9fa;
+            --sidebar-bg-1: #1a1f36;
+            --sidebar-bg-2: #252b48;
+            --danger: #e74c3c;
+            --info: #3498db;
+            --shadow: rgba(0, 0, 0, 0.1);
+        }
+
+        /* Dark mode — matches the main dashboard (body.dark-mode swaps variables) */
+        body.dark-mode {
+            --bg-primary: #1a1a2e;
+            --bg-card: #0f3460;
+            --text-primary: #e0e0e0;
+            --text-secondary: #a0a0a0;
+            --border-color: #2d4059;
+            --table-hover: #16213e;
+            --light-gray: #16213e;
+            --dark-gray: #16213e;
+            --shadow: rgba(0, 0, 0, 0.3);
+        }
+        /* Dark-mode overrides for the few remaining tinted surfaces */
+        body.dark-mode .add-tile:hover,
+        body.dark-mode table.items-table td .cell-input:focus,
+        body.dark-mode .icon-opt.sel { background: rgba(255,107,53,0.12); }
+        body.dark-mode .assetcode-lookup:hover { background: var(--table-hover); }
+        body.dark-mode .btn-danger:hover { background: rgba(231,76,60,0.15); }
+        body.dark-mode .rec-footer-note { background: rgba(243,201,105,0.10); border-color: #6b5a2b; color: #d8c48a; }
+        body.dark-mode .acp-badge { background: var(--table-hover); color: var(--text-primary); }
+        body.dark-mode .ed-lh-title, body.dark-mode .ed-lh-tagline { color: #6cb6e6; }
+        body.dark-mode .room-chip { background: var(--table-hover); color: var(--text-primary); }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        /* Embedded inside the dashboard (index.html iframe): drop the
+           navigation buttons that would duplicate the dashboard's chrome */
+        body.embedded #navDashboardBtn,
+        body.embedded #navPortalBtn { display: none; }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+        }
+
+        /* ===== Top Header ===== */
+        .app-header {
+            background: linear-gradient(135deg, var(--primary-orange) 0%, var(--dark-orange) 100%);
+            color: #fff;
+            padding: 18px 28px;
+            box-shadow: 0 4px 16px rgba(255, 107, 53, 0.25);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        .app-header-top {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+        .app-title-wrap { display: flex; align-items: center; gap: 14px; }
+        .app-title-icon { font-size: 2rem; }
+        .app-title { font-size: 1.5rem; font-weight: 700; letter-spacing: -0.5px; }
+        .app-subtitle { font-size: 0.82rem; opacity: 0.92; margin-top: 2px; }
+        .header-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+        .hbtn {
+            background: rgba(255, 255, 255, 0.18);
+            border: 1px solid rgba(255, 255, 255, 0.25);
+            color: #fff;
+            padding: 9px 15px;
+            border-radius: 9px;
+            cursor: pointer;
+            font-size: 0.86rem;
+            font-weight: 600;
+            font-family: inherit;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            text-decoration: none;
+        }
+        .hbtn:hover { background: rgba(255, 255, 255, 0.32); transform: translateY(-1px); }
+        .hbtn.solid { background: var(--bg-card); color: var(--dark-orange); }
+        .hbtn.solid:hover { background: #fff7f4; }
+
+        /* ===== Layout ===== */
+        .layout { display: flex; min-height: calc(100vh - 78px); }
+        .dept-panel {
+            width: 300px;
+            background: linear-gradient(180deg, var(--sidebar-bg-1) 0%, var(--sidebar-bg-2) 100%);
+            color: #c4c9e2;
+            flex-shrink: 0;
+            display: flex;
+            flex-direction: column;
+        }
+        .dept-panel-header {
+            padding: 16px 18px 10px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .dept-panel-header h2 { font-size: 0.78rem; text-transform: uppercase; letter-spacing: 1px; color: #8891bd; }
+        .dept-add-btn {
+            background: rgba(255, 255, 255, 0.1);
+            border: none; color: #fff;
+            width: 28px; height: 28px; border-radius: 7px;
+            cursor: pointer; font-size: 1.1rem; line-height: 1;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .dept-add-btn:hover { background: var(--primary-orange); }
+        .dept-search {
+            margin: 4px 14px 10px;
+            padding: 9px 12px;
+            border-radius: 8px;
+            border: 1px solid rgba(255,255,255,0.12);
+            background: rgba(0,0,0,0.2);
+            color: #fff;
+            font-size: 0.85rem;
+            font-family: inherit;
+        }
+        .dept-search::placeholder { color: #7078a0; }
+        .dept-list { flex: 1; overflow-y: auto; padding: 0 10px 16px; }
+        .dept-item {
+            display: flex; align-items: center; gap: 11px;
+            padding: 11px 12px; border-radius: 10px;
+            cursor: pointer; transition: all 0.15s; margin-bottom: 3px;
+        }
+        .dept-item:hover { background: rgba(255,255,255,0.07); color: #fff; }
+        .dept-item.active {
+            background: linear-gradient(135deg, var(--primary-orange) 0%, var(--dark-orange) 100%);
+            color: #fff; box-shadow: 0 4px 12px rgba(255,107,53,0.3);
+        }
+        .dept-item-icon {
+            width: 36px; height: 36px; border-radius: 8px; flex-shrink: 0;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.15rem; background: rgba(255,255,255,0.08);
+        }
+        .dept-item.active .dept-item-icon { background: rgba(255,255,255,0.22); }
+        .dept-item-body { flex: 1; min-width: 0; }
+        .dept-item-name { font-size: 0.9rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .dept-item-meta { font-size: 0.72rem; opacity: 0.75; margin-top: 1px; }
+
+        .content { flex: 1; padding: 26px 32px; overflow-x: hidden; }
+
+        /* ===== Cards / grids ===== */
+        .breadcrumb { font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 14px; }
+        .breadcrumb a { color: var(--primary-orange); cursor: pointer; text-decoration: none; font-weight: 600; }
+        .breadcrumb a:hover { text-decoration: underline; }
+
+        .section-head {
+            display: flex; align-items: flex-start; justify-content: space-between;
+            gap: 16px; flex-wrap: wrap; margin-bottom: 22px;
+        }
+        .section-title { font-size: 1.5rem; font-weight: 700; }
+        .section-desc { color: var(--text-secondary); font-size: 0.9rem; margin-top: 4px; }
+
+        .btn {
+            border: none; border-radius: 9px; padding: 10px 16px;
+            font-size: 0.86rem; font-weight: 600; cursor: pointer;
+            font-family: inherit; transition: all 0.2s;
+            display: inline-flex; align-items: center; gap: 7px;
+        }
+        .btn-primary { background: linear-gradient(135deg, var(--primary-orange) 0%, var(--dark-orange) 100%); color: #fff; }
+        .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 6px 16px rgba(255,107,53,0.3); }
+        .btn-green { background: linear-gradient(135deg, var(--primary-green) 0%, var(--dark-green) 100%); color: #fff; }
+        .btn-green:hover { transform: translateY(-1px); box-shadow: 0 6px 16px rgba(46,204,113,0.3); }
+        .btn-ghost { background: var(--bg-card); color: var(--text-primary); border: 1px solid var(--border-color); }
+        .btn-ghost:hover { background: var(--table-hover); border-color: #cbd3da; }
+        .btn-danger { background: var(--bg-card); color: var(--danger); border: 1px solid #f3c7c2; }
+        .btn-danger:hover { background: #fdeeec; }
+        .btn-sm { padding: 6px 11px; font-size: 0.78rem; }
+
+        .card-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 16px; }
+        .room-card {
+            background: var(--bg-card); border: 1px solid var(--border-color);
+            border-radius: 14px; padding: 18px; cursor: pointer;
+            transition: all 0.2s; position: relative; overflow: hidden;
+        }
+        .room-card::before {
+            content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 5px;
+            background: linear-gradient(180deg, var(--primary-orange), var(--dark-orange));
+        }
+        .room-card:hover { transform: translateY(-3px); box-shadow: 0 10px 26px rgba(0,0,0,0.1); border-color: var(--primary-orange); }
+        .room-card h3 { font-size: 1rem; font-weight: 700; margin-bottom: 6px; padding-left: 4px; }
+        .room-card .room-loc { font-size: 0.78rem; color: var(--text-secondary); padding-left: 4px; }
+        .room-card-foot { display: flex; align-items: center; justify-content: space-between; margin-top: 14px; padding-left: 4px; }
+        .room-chip {
+            background: var(--light-gray); color: var(--dark-gray);
+            font-size: 0.72rem; font-weight: 600; padding: 4px 9px; border-radius: 20px;
+        }
+        .room-chip.has-items { background: rgba(46,204,113,0.15); color: var(--dark-green); }
+
+        .add-tile {
+            background: var(--bg-card); border: 2px dashed var(--border-color); border-radius: 14px;
+            padding: 18px; cursor: pointer; display: flex; flex-direction: column;
+            align-items: center; justify-content: center; gap: 8px; min-height: 118px;
+            color: var(--text-secondary); font-weight: 600; transition: all 0.2s;
+        }
+        .add-tile:hover { border-color: var(--primary-orange); color: var(--primary-orange); background: #fff8f5; }
+        .add-tile .plus { font-size: 1.8rem; line-height: 1; }
+
+        /* ===== In-location search (department view + record view) ===== */
+        .loc-search-bar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 18px; }
+        .loc-search-wrap { position: relative; flex: 1 1 260px; min-width: 220px; max-width: 480px; }
+        .loc-search {
+            width: 100%; padding: 10px 34px;
+            border: 1px solid var(--border-color); border-radius: 10px;
+            background: var(--bg-card); color: var(--text-primary);
+            font-size: 0.9rem; font-family: inherit;
+        }
+        .loc-search:focus { outline: none; border-color: var(--primary-orange); box-shadow: 0 0 0 3px rgba(255,107,53,0.12); }
+        .loc-search-icon { position: absolute; left: 11px; top: 50%; transform: translateY(-50%); font-size: 0.85rem; pointer-events: none; opacity: 0.75; }
+        .loc-search-clear {
+            position: absolute; right: 5px; top: 50%; transform: translateY(-50%);
+            border: none; background: transparent; color: var(--text-secondary);
+            cursor: pointer; font-size: 1rem; line-height: 1; padding: 5px 8px; border-radius: 7px;
+        }
+        .loc-search-clear:hover { background: var(--table-hover); color: var(--text-primary); }
+        .loc-search-count { font-size: 0.8rem; color: var(--text-secondary); }
+
+        .loc-hit-head {
+            font-size: 0.75rem; text-transform: uppercase; letter-spacing: 1px;
+            color: var(--text-secondary); font-weight: 700; margin: 26px 0 10px;
+        }
+        .loc-hit-list { display: flex; flex-direction: column; gap: 8px; }
+        .loc-hit {
+            background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 11px;
+            padding: 11px 14px; cursor: pointer; transition: all 0.15s;
+            display: flex; gap: 14px; align-items: center; flex-wrap: wrap;
+        }
+        .loc-hit:hover { border-color: var(--primary-orange); background: var(--table-hover); }
+        .loc-hit-main { flex: 1 1 200px; min-width: 0; }
+        .loc-hit-title { font-weight: 600; font-size: 0.92rem; }
+        .loc-hit-sub { font-size: 0.78rem; color: var(--text-secondary); margin-top: 3px; }
+        .loc-hit-code {
+            font-size: 0.76rem; font-weight: 700; color: var(--primary-orange);
+            font-family: 'Courier New', monospace; white-space: nowrap;
+        }
+        .loc-hit mark, .room-card mark { background: rgba(255,107,53,0.28); color: inherit; border-radius: 3px; padding: 0 1px; }
+        .loc-more { padding: 10px 4px 0; font-size: 0.8rem; color: var(--text-secondary); }
+        .no-hits { padding: 30px 20px; text-align: center; color: var(--text-secondary); font-size: 0.9rem; }
+
+        /* Row filter inside an open location record */
+        .rec-search-bar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }
+
+        .empty-state { text-align: center; padding: 60px 20px; color: var(--text-secondary); }
+        .empty-state .big { font-size: 3rem; margin-bottom: 10px; }
+
+        /* Dashboard stat tiles */
+        .stat-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 14px; margin-bottom: 26px; }
+        .stat-tile { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 14px; padding: 16px 18px; }
+        .stat-tile .num { font-size: 1.8rem; font-weight: 800; color: var(--primary-orange); }
+        .stat-tile .lbl { font-size: 0.8rem; color: var(--text-secondary); margin-top: 2px; }
+
+        .dept-overview-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; }
+        .dept-overview-card {
+            background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 14px;
+            padding: 20px; cursor: pointer; transition: all 0.2s; display: flex; gap: 14px; align-items: center;
+        }
+        .dept-overview-card:hover { transform: translateY(-3px); box-shadow: 0 10px 26px rgba(0,0,0,0.1); border-color: var(--primary-orange); }
+        .dept-overview-icon {
+            width: 52px; height: 52px; border-radius: 12px; flex-shrink: 0;
+            display: flex; align-items: center; justify-content: center; font-size: 1.5rem;
+            background: linear-gradient(135deg, rgba(255,107,53,0.12), rgba(229,89,52,0.12));
+        }
+        .dept-overview-card h3 { font-size: 1.05rem; font-weight: 700; }
+        .dept-overview-card p { font-size: 0.8rem; color: var(--text-secondary); margin-top: 3px; }
+
+        /* ===== Record editor (matches PDF form) ===== */
+        .record-toolbar { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 18px; }
+        .record-sheet {
+            background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 14px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.06); max-width: 900px; margin: 0 auto;
+            padding: 40px 46px;
+        }
+        .ed-letterhead { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding-bottom: 16px; margin-bottom: 18px; border-bottom: 2px solid var(--light-gray); }
+        .ed-letterhead img { height: 54px; width: auto; }
+        .ed-letterhead .ed-lh-srha { height: 50px; }
+        .ed-lh-text { flex: 1; text-align: center; }
+        .ed-lh-title { font-size: 1.15rem; font-weight: 800; color: #1F6FB2; line-height: 1.15; }
+        .ed-lh-tagline { font-size: 0.78rem; font-weight: 700; color: #1F6FB2; margin-top: 3px; }
+        .rec-title { text-align: center; font-size: 1.3rem; font-weight: 700; letter-spacing: 1px; margin-bottom: 22px; }
+        .rec-fields { margin-bottom: 22px; }
+        .rec-field-row { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+        .rec-field-row label { font-weight: 700; min-width: 170px; font-size: 0.92rem; }
+        .rec-field-row input {
+            flex: 1; border: none; border-bottom: 1px solid var(--border-color); padding: 5px 4px;
+            font-size: 0.92rem; font-family: inherit; color: var(--text-primary); background: transparent;
+        }
+        .rec-field-row input:focus { outline: none; border-bottom-color: var(--primary-orange); }
+
+        /* Horizontal scroll wrapper so the 5-column table is reachable on mobile */
+        .items-table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; margin-top: 6px; }
+        table.items-table { width: 100%; min-width: 620px; border-collapse: collapse; }
+        table.items-table th {
+            background: var(--dark-gray); color: #fff; text-align: left;
+            padding: 9px 10px; font-size: 0.84rem; font-weight: 600; border: 1px solid var(--dark-gray);
+        }
+        table.items-table td { border: 1px solid var(--border-color); padding: 0; vertical-align: top; }
+        table.items-table td .cell-input {
+            width: 100%; border: none; padding: 8px 10px; font-size: 0.86rem;
+            font-family: inherit; background: transparent; color: var(--text-primary); resize: none;
+            min-height: 38px; line-height: 1.35;
+        }
+        table.items-table td .cell-input:focus { outline: 2px solid rgba(255,107,53,0.35); outline-offset: -2px; background: #fff8f5; }
+        table.items-table tr:nth-child(even) td { background: var(--table-hover); }
+        .col-num { width: 34px; text-align: center; color: var(--text-secondary); font-size: 0.8rem; padding: 8px 4px !important; }
+        .col-act { width: 40px; text-align: center; }
+        /* Written off at Board of Survey: the row stays (the sheet records
+           what was surveyed in that room) but must never read as live stock. */
+        table.items-table tr.row-boarded td { opacity: 0.62; }
+        table.items-table tr.row-boarded td .cell-input { text-decoration: line-through; }
+        .bos-badge {
+            display: inline-block; margin-left: 4px; padding: 0 4px;
+            background: var(--danger); color: #fff; border-radius: 3px;
+            font-size: 0.62rem; font-weight: 700; letter-spacing: 0.3px;
+            vertical-align: middle; text-decoration: none;
+        }
+        .col-item { width: 22%; }
+        .col-desc { width: 34%; }
+        .col-code { width: 20%; }
+        .col-remarks { width: 20%; }
+        .row-del { background: none; border: none; color: var(--danger); cursor: pointer; font-size: 1rem; opacity: 0.6; padding: 8px; }
+        .row-del:hover { opacity: 1; }
+        .row-move { background: none; border: none; cursor: pointer; font-size: 0.95rem; opacity: 0.6; padding: 8px; }
+        .row-move:hover { opacity: 1; }
+        /* Move-item picker */
+        .move-modal-list { max-height: 46vh; overflow-y: auto; border: 1px solid var(--border-color); border-radius: 10px; margin-top: 8px; text-align: left; }
+        .move-dept-row { display: flex; align-items: center; gap: 8px; padding: 8px 12px; cursor: pointer; background: rgba(255,107,53,0.06); border-bottom: 1px solid var(--border-color); font-weight: 600; font-size: 0.85rem; }
+        .move-room-row { display: flex; align-items: center; gap: 8px; padding: 7px 12px 7px 32px; cursor: pointer; border-bottom: 1px solid rgba(0,0,0,0.05); font-size: 0.82rem; }
+        .move-room-row:hover, .move-opt-row:hover { background: rgba(255,107,53,0.08); }
+        .move-opt-row { padding: 7px 12px 7px 32px; cursor: pointer; border-bottom: 1px solid rgba(0,0,0,0.05); font-size: 0.78rem; color: #d2691e; }
+        /* Asset Code cell: textarea + lookup button */
+        .assetcode-cell { display: flex; align-items: stretch; }
+        .assetcode-cell .cell-input { flex: 1; }
+        .assetcode-lookup { background: none; border: none; border-left: 1px solid var(--border-color); cursor: pointer; font-size: 0.9rem; padding: 0 8px; opacity: 0.65; }
+        .assetcode-lookup:hover { opacity: 1; background: #f0f4f8; }
+        /* Asset code lookup pop-up */
+        .acp-overlay { position: fixed; inset: 0; background: rgba(20,25,45,0.55); backdrop-filter: blur(2px); display: none; align-items: center; justify-content: center; z-index: 2000; padding: 20px; }
+        .acp-overlay.open { display: flex; }
+        .acp-box { background: var(--bg-card); border-radius: 16px; width: 100%; max-width: 620px; box-shadow: 0 24px 60px rgba(0,0,0,0.3); overflow: hidden; display: flex; flex-direction: column; max-height: 88vh; }
+        .acp-head { background: linear-gradient(135deg, #16a085, #1abc9c); color: #fff; padding: 16px 20px; display: flex; justify-content: space-between; align-items: center; }
+        .acp-head h3 { margin: 0; font-size: 1.1rem; }
+        .acp-close { background: none; border: none; color: #fff; font-size: 1.5rem; cursor: pointer; opacity: 0.85; }
+        .acp-close:hover { opacity: 1; }
+        .acp-body { padding: 18px 20px; overflow: hidden; display: flex; flex-direction: column; }
+        .acp-search { width: 100%; padding: 10px 12px; border: 1px solid var(--border-color); border-radius: 10px; font-size: 0.9rem; margin-bottom: 8px; }
+        .acp-hint { font-size: 0.8rem; color: var(--text-secondary); margin: 0 0 10px; }
+        .acp-list { overflow-y: auto; border: 1px solid rgba(0,0,0,0.08); border-radius: 10px; }
+        .acp-row { display: flex; justify-content: space-between; gap: 10px; align-items: center; padding: 9px 14px; cursor: pointer; border-bottom: 1px solid rgba(0,0,0,0.05); }
+        .acp-row:hover { background: rgba(26,188,156,0.10); }
+        .acp-badge { font-size: 0.72rem; background: #e8f0f5; color: #2c3e50; border-radius: 6px; padding: 2px 7px; }
+        .acp-badge.new { background: linear-gradient(135deg, #8e44ad, #9b59b6); color: #fff; }
+        .add-row-btn { margin-top: 12px; }
+        .rec-footer-note {
+            margin-top: 26px; padding: 14px 16px; border: 1px solid #e6d3b3; background: #fdf6e3;
+            border-radius: 8px; font-size: 0.82rem; font-style: italic; color: #8a6d3b; line-height: 1.5;
+        }
+        .save-hint { font-size: 0.8rem; color: var(--text-secondary); }
+        .save-hint.saved { color: var(--dark-green); font-weight: 600; }
+
+        /* ===== Modal ===== */
+        .modal-overlay {
+            position: fixed; inset: 0; background: rgba(20,25,45,0.55); backdrop-filter: blur(2px);
+            display: none; align-items: center; justify-content: center; z-index: 1000; padding: 20px;
+        }
+        .modal-overlay.open { display: flex; }
+        .modal {
+            background: var(--bg-card); border-radius: 16px; width: 100%; max-width: 460px;
+            padding: 26px; box-shadow: 0 24px 60px rgba(0,0,0,0.3);
+        }
+        .modal h3 { font-size: 1.2rem; margin-bottom: 6px; }
+        .modal p.sub { color: var(--text-secondary); font-size: 0.85rem; margin-bottom: 18px; }
+        .modal label { display: block; font-size: 0.82rem; font-weight: 600; margin: 14px 0 6px; }
+        .modal input, .modal select, .modal textarea {
+            width: 100%; padding: 10px 12px; border: 1px solid var(--border-color);
+            border-radius: 9px; font-size: 0.9rem; font-family: inherit;
+        }
+        .modal input:focus, .modal select:focus, .modal textarea:focus { outline: none; border-color: var(--primary-orange); }
+        .icon-picker { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
+        .icon-opt { width: 42px; height: 42px; border-radius: 10px; border: 2px solid var(--border-color); background: var(--bg-card); font-size: 1.3rem; cursor: pointer; }
+        .icon-opt.sel { border-color: var(--primary-orange); background: #fff3ee; }
+        .modal-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 24px; }
+
+        /* Toast */
+        .toast {
+            position: fixed; bottom: 26px; left: 50%; transform: translateX(-50%) translateY(120px);
+            background: var(--dark-gray); color: #fff; padding: 12px 22px; border-radius: 30px;
+            font-size: 0.88rem; font-weight: 600; box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            z-index: 2000; transition: transform 0.3s; opacity: 0.98;
+        }
+        .toast.show { transform: translateX(-50%) translateY(0); }
+        .toast.success { background: var(--dark-green); }
+        .toast.error { background: var(--danger); }
+
+        /* ===== Print / Preview =====
+           Reproduces the official SRHA "LOCATION RECORD" form (US Letter).
+           The header info (Location/Room Title/…) is a bordered <div>, NOT a
+           table. On a multi-page record the whole header block reprints on
+           every page via a position:fixed running header (see printRecords). */
+        #printArea { display: none; }
+        .print-record {
+            font-family: Cambria, 'Times New Roman', Georgia, serif;
+            color: #000; background: var(--bg-card);
+        }
+        /* --- Running header: letterhead + title + info box --- */
+        .print-record .pr-runhead { background: var(--bg-card); }
+        .print-record .pr-letterhead {
+            display: flex; align-items: center; justify-content: space-between; gap: 12px;
+        }
+        .print-record .pr-lh-moh { height: 60px; width: auto; }
+        .print-record .pr-lh-srha { height: 56px; width: auto; }
+        .print-record .pr-lh-text { flex: 1; text-align: center; }
+        .print-record .pr-lh-title { font-size: 18pt; font-weight: bold; color: #135E9E; line-height: 1.1; white-space: nowrap; }
+        .print-record .pr-lh-tagline { font-size: 10pt; font-weight: bold; color: #135E9E; margin-top: 5px; }
+        .print-record .pr-title { text-align: center; font-size: 12pt; font-weight: bold; margin: 22px 0 0; }
+        /* Header info box (a div, not a table) — no bottom border so it joins the grid */
+        .print-record .pr-infobox { border: 1px solid #000; border-bottom: none; padding: 14px 14px 4px; margin-top: 10px; }
+        .print-record .pr-field { font-size: 12pt; margin-bottom: 17px; }
+        .print-record .pr-field .k { font-weight: bold; }
+        /* --- Item grid --- */
+        .print-record table.pr-items { width: 100%; border-collapse: collapse; }
+        .print-record table.pr-items thead { display: table-header-group; }
+        .print-record table.pr-items th,
+        .print-record table.pr-items td { border: 1px solid #000; padding: 5px 7px; font-size: 11pt; text-align: left; vertical-align: top; }
+        .print-record table.pr-items th { font-weight: bold; }
+        .print-record .pr-note {
+            margin-top: 26px; margin-left: 16px; font-style: italic; font-weight: bold;
+            font-size: 11.5pt; line-height: 1.45; max-width: 80%;
+        }
+
+        /* Preview modal (on-screen live preview) */
+        .preview-overlay {
+            position: fixed; inset: 0; background: rgba(20,25,45,0.6); z-index: 1500;
+            display: none; flex-direction: column; padding: 0;
+        }
+        .preview-overlay.open { display: flex; }
+        .preview-bar {
+            background: var(--dark-gray); color: #fff; padding: 12px 22px;
+            display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap;
+        }
+        .preview-bar h3 { font-size: 1.05rem; }
+        .preview-scroll { flex: 1; overflow-y: auto; padding: 26px; }
+        /* US Letter page proportions for on-screen preview */
+        .preview-page {
+            background: var(--bg-card); width: 8.5in; max-width: 100%; margin: 0 auto 24px;
+            padding: 0.85in 0.9in; box-shadow: 0 6px 24px rgba(0,0,0,0.3); box-sizing: border-box;
+        }
+        .preview-page .pr-pagefoot { text-align: center; font-size: 9pt; margin-top: 22px; font-family: Cambria, serif; }
+
+        @media (max-width: 820px) {
+            .dept-panel { width: 100%; position: static; }
+            .layout { flex-direction: column; }
+            .dept-list { max-height: 220px; }
+            .record-sheet { padding: 24px 18px; }
+            .rec-field-row { flex-direction: column; align-items: flex-start; gap: 4px; }
+            .rec-field-row label { min-width: 0; }
+            .rec-field-row input { width: 100%; }
+        }
+
+        @media print {
+            /* Hide the app chrome; only the record(s) print. */
+            body > *:not(#printArea) { display: none !important; }
+            #printArea { display: block !important; }
+            .print-record { page-break-after: always; }
+            .print-record:last-child { page-break-after: auto; }
+            /* Item column headers reprint on each page of a long record. */
+            .print-record table.pr-items thead { display: table-header-group; }
+            @page {
+                size: Letter; margin: 0.85in 0.9in 0.7in 0.9in;
+                @bottom-center { content: "Page " counter(page) " of " counter(pages); font-family: Cambria, serif; font-size: 9pt; }
+            }
+        }
+
+        /* ============================================
+           MOBILE UI IMPROVEMENTS
+           ============================================ */
+        @media (max-width: 768px) {
+            /* Keep form controls at 16px so iOS Safari doesn't zoom on focus */
+            input[type="text"], input[type="search"], input[type="number"],
+            input[type="date"], select, textarea {
+                font-size: 16px !important;
+            }
+
+            /* Comfortable touch targets */
+            .btn {
+                min-height: 44px;
+            }
+
+            /* Momentum scrolling for the department list */
+            .dept-list {
+                -webkit-overflow-scrolling: touch;
+                overscroll-behavior: contain;
+            }
+
+            /* Give the item table room to breathe rather than crushing
+               every word onto its own line inside a narrow column.
+               table-layout: fixed so the column percentages below actually
+               hold — under auto layout the browser hands the space to
+               whichever column has the longest words, which starved the
+               Asset Code column until "BRH/AE/591/01" broke over 3 lines. */
+            .items-table-scroll { overscroll-behavior-x: contain; }
+            table.items-table { min-width: 720px; table-layout: fixed; }
+            table.items-table th { padding: 8px 8px; }
+            table.items-table td .cell-input { padding: 8px 8px; }
+            /* Asset Code is widened to pay for the two lookup buttons that
+               share the cell with the code itself. */
+            .col-item { width: 19%; }
+            .col-desc { width: 29%; }
+            .col-code { width: 28%; }
+            .col-remarks { width: 24%; }
+            .assetcode-lookup { padding: 0 6px; }
+        }
+
+        /* ============================================
+           PHONES — the 5-column form does not fit a phone at any
+           column width, so each item becomes a stacked card with its
+           column name as the label. No horizontal scrolling, and every
+           field gets the full width of the sheet.
+           ============================================ */
+        @media (max-width: 640px) {
+            .record-sheet { padding: 18px 12px; }
+            .items-table-scroll { overflow-x: visible; }
+
+            table.items-table,
+            table.items-table tbody,
+            table.items-table tr,
+            table.items-table td { display: block; width: auto; }
+            .col-item, .col-desc, .col-code, .col-remarks { width: auto; }
+            table.items-table { min-width: 0; border-collapse: separate; border-spacing: 0; }
+            table.items-table thead { display: none; }
+
+            table.items-table tr {
+                border: 1px solid var(--border-color);
+                border-radius: 10px;
+                margin-bottom: 12px;
+                padding: 6px 10px 10px;
+                background: var(--bg-card);
+                position: relative;
+            }
+            table.items-table tr:nth-child(even) td { background: transparent; }
+            table.items-table tr:nth-child(even) { background: var(--table-hover); }
+
+            table.items-table td { border: none; padding: 6px 0 0; }
+            table.items-table td::before {
+                content: attr(data-label);
+                display: block;
+                font-size: 0.7rem;
+                font-weight: 700;
+                letter-spacing: 0.4px;
+                text-transform: uppercase;
+                color: var(--text-secondary);
+                margin-bottom: 3px;
+            }
+            table.items-table td .cell-input {
+                border: 1px solid var(--border-color);
+                border-radius: 8px;
+                padding: 9px 10px;
+                min-height: 44px;
+            }
+
+            /* Row number sits as a badge in the card header; the row
+               actions sit beside it instead of in a 40px column. */
+            table.items-table td.col-num {
+                width: auto; text-align: left; padding: 2px 0 0 !important;
+                font-size: 0.78rem; font-weight: 700; color: var(--text-secondary);
+            }
+            table.items-table td.col-num::before { content: "#"; display: inline; margin: 0; }
+            table.items-table td.col-act {
+                position: absolute; top: 4px; right: 6px;
+                width: auto; padding: 0;
+            }
+            table.items-table td.col-act::before { display: none; }
+            table.items-table td.col-act .row-move,
+            table.items-table td.col-act .row-del { font-size: 1.05rem; opacity: 0.75; padding: 8px 6px; }
+
+            /* Asset Code keeps its lookup buttons, sized for a thumb */
+            .assetcode-cell {
+                border: 1px solid var(--border-color); border-radius: 8px; overflow: hidden;
+            }
+            .assetcode-cell .cell-input { border: none; border-radius: 0; }
+            .assetcode-lookup { padding: 0 12px; font-size: 1rem; }
+
+            .add-row-btn { width: 100%; min-height: 44px; }
+        }
+    </style>
+</head>
+<body>
+    <!-- ===== Header ===== -->
+    <header class="app-header">
+        <div class="app-header-top">
+            <div class="app-title-wrap">
+                <span class="app-title-icon">🏥</span>
+                <div>
+                    <div class="app-title">Location Records</div>
+                    <div class="app-subtitle">Black River Hospital • Southern Regional Health Authority</div>
+                </div>
+            </div>
+            <div class="header-actions">
+                <button class="hbtn" id="locThemeToggle" onclick="toggleLocTheme()" title="Toggle dark mode">🌙</button>
+                <button class="hbtn" onclick="openPreview('all')" title="Live preview of every department record">👁️ Live Preview</button>
+                <button class="hbtn" onclick="printRecords('all')" title="Print / Save all records as PDF">🖨️ Print All (PDF)</button>
+                <button class="hbtn" onclick="exportData()" title="Download a backup of all records">⬇️ Backup</button>
+                <button class="hbtn" onclick="document.getElementById('importFile').click()" title="Restore records from a backup file">⬆️ Restore</button>
+                <input type="file" id="importFile" accept="application/json" style="display:none" onchange="importData(event)">
+                <button class="hbtn" onclick="openLocAssetCodePicker(null)" title="Browse the standard asset code reference">🔍 Asset Codes</button>
+                <a class="hbtn solid" id="navDashboardBtn" href="index.html">← Dashboard</a>
+            </div>
+        </div>
+    </header>
+
+    <div class="layout">
+        <!-- ===== Department panel ===== -->
+        <aside class="dept-panel">
+            <div class="dept-panel-header">
+                <h2>Departments &amp; Wards</h2>
+                <button class="dept-add-btn" title="Add department" onclick="openDeptModal()">+</button>
+            </div>
+            <input type="text" class="dept-search" id="deptSearch" placeholder="🔍 Search records..." oninput="onSearch()">
+            <div class="dept-list" id="deptList"></div>
+        </aside>
+
+        <!-- ===== Main content ===== -->
+        <main class="content" id="content"></main>
+    </div>
+
+    <!-- Hidden print target -->
+    <div id="printArea"></div>
+
+    <!-- ===== Live preview overlay ===== -->
+    <div class="preview-overlay" id="previewOverlay">
+        <div class="preview-bar">
+            <h3 id="previewTitle">Live Preview</h3>
+            <div style="display:flex; gap:10px;">
+                <button class="btn btn-green" id="previewPrintBtn" onclick="printFromPreview()">🖨️ Print / Save PDF</button>
+                <button class="btn btn-ghost" onclick="closePreview()">✕ Close</button>
+            </div>
+        </div>
+        <div class="preview-scroll" id="previewScroll"></div>
+    </div>
+
+    <!-- ===== Generic modal ===== -->
+    <div class="modal-overlay" id="modalOverlay">
+        <div class="modal" id="modalBox"></div>
+    </div>
+
+    <div class="toast" id="toast"></div>
+
+    <!-- ===== Asset code lookup pop-up ===== -->
+    <div class="acp-overlay" id="acpOverlay">
+        <div class="acp-box">
+            <div class="acp-head">
+                <h3>🔍 Asset Code Reference</h3>
+                <button class="acp-close" onclick="closeLocPicker()" title="Close">&times;</button>
+            </div>
+            <div class="acp-body">
+                <input type="text" class="acp-search" id="acpSearch" placeholder="Search by code or description..." oninput="renderLocPickerList()">
+                <p class="acp-hint" id="acpHint"></p>
+                <div class="acp-list" id="acpList" style="max-height:52vh;"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Letterhead logos for the official Location Record form -->
+    <script src="locations-assets.js"></script>
+    <!-- Shared asset code reference (same list as the Asset Manager dashboard) -->
+    <script src="asset-codes.js"></script>
+    <script src="asset-normalizer.js"></script>
+
+    <script>
+    /* ---- shared dark-mode theme (persists across the app) ---- */
+    function _syncLocThemeIcon() {
+        var b = document.getElementById('locThemeToggle');
+        if (b) b.textContent = document.body.classList.contains('dark-mode') ? '☀️' : '🌙';
+    }
+    function toggleLocTheme() {
+        document.body.classList.toggle('dark-mode');
+        if (window.mphSaveTheme) window.mphSaveTheme();
+        _syncLocThemeIcon();
+    }
+    if (window.mphApplySavedTheme) window.mphApplySavedTheme();
+    document.addEventListener('DOMContentLoaded', function () {
+        if (window.mphApplySavedTheme) window.mphApplySavedTheme();
+        _syncLocThemeIcon();
+    });
+
+    /* ============================================================
+       LOCATION RECORDS  —  Black River Hospital
+       Data model (localStorage key: hospitalLocationRecords)
+       {
+         departments: [
+           { id, name, icon, location, note,
+             rooms: [
+               { id, title, verifiedBy, dateUpdated, note,
+                 items: [ { id, item, description, assetCode, remarks } ] }
+             ] }
+         ]
+       }
+    ============================================================ */
+
+    const STORAGE_KEY = 'hospitalLocationRecords';
+    const APPROVAL_NOTE = 'Approval should be sought from Inventory and Fixed Asset Manager/ Officer concerning relocation/transfers from this department/location before the item is moved.';
+    const MIN_PRINT_ROWS = 12; // blank rows to match the official one-page form
+
+    // Official SRHA letterhead used at the top of every printed/preview record
+    function letterheadHtml() {
+        const moh = (typeof LOGO_MOH !== 'undefined') ? LOGO_MOH : '';
+        const srha = (typeof LOGO_SRHA !== 'undefined') ? LOGO_SRHA : '';
+        return `
+        <div class="pr-letterhead">
+            <img class="pr-lh-moh" src="${moh}" alt="Ministry of Health &amp; Wellness">
+            <div class="pr-lh-text">
+                <div class="pr-lh-title">Southern Regional Health Authority</div>
+                <div class="pr-lh-tagline"><b>C</b>ompassion | <b>A</b>ccountability | <b>R</b>espect | <b>E</b>fficiency</div>
+            </div>
+            <img class="pr-lh-srha" src="${srha}" alt="SRHA">
+        </div>`;
+    }
+
+    let db = { departments: [] };
+    let selectedDeptId = null;
+    let selectedRoomId = null;
+    let searchTerm = '';        // sidebar box — filters the department list
+    let deptViewTerm = '';      // department view — searches that location's rooms & items
+    let roomViewTerm = '';      // open record — filters the rows of that room
+
+    /* ---------- ID helper ---------- */
+    function uid(prefix) { return (prefix || 'id') + '_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 7); }
+
+    /* ---------- Persistence ---------- */
+    function save() {
+        db.lastModified = new Date().toISOString();
+        let ok = false;
+        if (window.mphSaveLocationRecords) {
+            ok = window.mphSaveLocationRecords(db);
+        } else {
+            try { localStorage.setItem(STORAGE_KEY, JSON.stringify(db)); ok = true; } catch (e) {}
+        }
+        if (!ok) warnNotSaved();
+        // Flag the change for the dashboard's cloud auto-sync (index.html
+        // checks this key and uploads location records with the next sync,
+        // even when the edit happened on this standalone page).
+        try { localStorage.setItem(STORAGE_KEY + 'Dirty', '1'); } catch (e) {}
+        // When embedded in the dashboard, tell it immediately.
+        try {
+            if (window.parent && window.parent !== window) {
+                window.parent.postMessage({ type: 'mph-location-records-updated' }, window.location.origin);
+            }
+        } catch (e) { /* ignore */ }
+    }
+    // Never fail silently: a change is on screen but did NOT persist — losing
+    // it on reload without warning is data loss. Fired synchronously when a
+    // save can't be written, and asynchronously when the IndexedDB write later
+    // rejects (registered below) so the optimistic return can't hide a failure.
+    function warnNotSaved() {
+        toast('⚠️ NOT SAVED — browser storage is full', 'error');
+        if (!window._mphStorageFullWarned) {
+            window._mphStorageFullWarned = true;
+            try {
+                alert('⚠️ Your browser storage is full — this change could NOT be saved.\n\n' +
+                      'Click "Backup" now to download a copy of your records so nothing is lost, ' +
+                      'then reload the page. If this keeps happening, clear old site data for this ' +
+                      'site (or use another browser profile) and restore from your backup.');
+            } catch (e) {}
+        }
+    }
+    if (window.mphOnLocationSaveError) window.mphOnLocationSaveError(warnNotSaved);
+    const SEED_VERSION_KEY = 'hospitalLocationRecordsSeedVersion';
+    function currentSeedVersion() {
+        return (typeof LOCATIONS_SEED_VERSION !== 'undefined') ? String(LOCATIONS_SEED_VERSION) : '1';
+    }
+    function load() {
+        // Records live in the shared IndexedDB-backed store (loaded before
+        // this runs); the accessor also covers the legacy localStorage copy.
+        db = (window.mphGetLocationRecordsAny && window.mphGetLocationRecordsAny()) || null;
+        const raw = db ? JSON.stringify(db) : null;   // pre-upgrade snapshot for the safety backup
+        if (!db || !Array.isArray(db.departments)) db = { departments: [] };
+        const storedVersion = localStorage.getItem(SEED_VERSION_KEY);
+        const needSeed = db.departments.length === 0;
+        // Refresh cached seed data when a newer seed ships. This is what makes
+        // updated departments/rooms appear for users whose browser still holds
+        // an older seed. The seed is MERGED into whatever the user already has
+        // (rooms/items matched by id, title and asset code) — user records are
+        // never replaced and never lost.
+        const seedOutdated = storedVersion !== currentSeedVersion();
+        if ((needSeed || seedOutdated) && typeof SEED_DEPARTMENTS === 'function') {
+            // Preserve whatever was stored before, as a one-time safety backup.
+            // Old backups are pruned first — each one is as big as the live
+            // records, and stacking them exhausts the localStorage quota,
+            // which then makes every save of a new record fail.
+            if (raw && seedOutdated) {
+                if (window.mphPruneLocationBackups) window.mphPruneLocationBackups(0);
+                try { localStorage.setItem(STORAGE_KEY + '_backup_v' + (storedVersion || '1'), raw); } catch (e) {}
+            }
+            if (needSeed) {
+                db = { departments: SEED_DEPARTMENTS() };
+            } else if (window.mphMergeLocationRecords) {
+                db = window.mphMergeLocationRecords(db, { departments: SEED_DEPARTMENTS() }).merged;
+            }
+            localStorage.setItem(SEED_VERSION_KEY, currentSeedVersion());
+            save();
+        }
+        // Make sure every canonical hospital department (the list every asset
+        // in the register is linked to) exists as a location record. Adds
+        // missing departments only — never touches user-edited records.
+        if (typeof mphEnsureLocationDepartments === 'function') {
+            save();  // persist current state first so ensure() reads it
+            const added = mphEnsureLocationDepartments();
+            if (added > 0) {
+                const fresh = window.mphGetLocationRecordsAny && window.mphGetLocationRecordsAny();
+                if (fresh && Array.isArray(fresh.departments)) db = fresh;
+            }
+        }
+        // Honour transfers recorded on this or any synced device: an item is
+        // shown in the department it was moved TO, never back in the one it
+        // came from. Cheap when nothing has ever been transferred.
+        let placed = false;
+        // deletions first: an item the user removed must not be here at all,
+        // whatever id it came back under
+        if (window.mphPruneTombstoned) placed = window.mphPruneTombstoned(db) || placed;
+        if (window.mphApplyLocationMoves) placed = window.mphApplyLocationMoves(db) || placed;
+        if (placed) save();
+    }
+
+    /* ---------- Lookups ---------- */
+    function getDept(id) { return db.departments.find(d => d.id === id); }
+    function getRoom(dept, id) { return dept ? dept.rooms.find(r => r.id === id) : null; }
+    function totalItems(dept) { return dept.rooms.reduce((s, r) => s + (r.items ? r.items.length : 0), 0); }
+
+    /* ============================================================
+       RENDER: department panel
+    ============================================================ */
+    function renderDeptList() {
+        const list = document.getElementById('deptList');
+        const term = searchTerm.toLowerCase();
+        let depts = db.departments;
+        list.innerHTML = '';
+        depts.forEach(d => {
+            if (term && !deptMatches(d, term)) return;
+            const div = document.createElement('div');
+            div.className = 'dept-item' + (d.id === selectedDeptId ? ' active' : '');
+            div.onclick = () => selectDept(d.id);
+            div.innerHTML = `
+                <div class="dept-item-icon">${d.icon || '🏢'}</div>
+                <div class="dept-item-body">
+                    <div class="dept-item-name">${esc(d.name)}</div>
+                    <div class="dept-item-meta">${d.rooms.length} room${d.rooms.length !== 1 ? 's' : ''} • ${totalItems(d)} items</div>
+                </div>`;
+            list.appendChild(div);
+        });
+        if (!list.children.length) {
+            list.innerHTML = `<div style="padding:18px;color:#7078a0;font-size:0.85rem;text-align:center;">No matching records.</div>`;
+        }
+    }
+
+    /* One definition of "this row matches what was typed", shared by the
+       sidebar, the department search and the record row filter, so all three
+       boxes agree on what counts as a hit. */
+    function itemMatches(it, term) {
+        return (it.item || '').toLowerCase().includes(term)
+            || (it.description || '').toLowerCase().includes(term)
+            || (it.assetCode || '').toLowerCase().includes(term)
+            || (it.remarks || '').toLowerCase().includes(term);
+    }
+
+    function deptMatches(d, term) {
+        if (d.name.toLowerCase().includes(term)) return true;
+        return d.rooms.some(r => r.title.toLowerCase().includes(term)
+            || (r.items || []).some(it => itemMatches(it, term)));
+    }
+
+    /* Escaped text with every occurrence of the search term marked. The text
+       is escaped first, then the (escaped) term is matched against it, so a
+       term containing & or < still lines up with what is on screen. */
+    function highlight(text, term) {
+        const safe = esc(text);
+        const t = esc(String(term || '')).trim();
+        if (!t) return safe;
+        try {
+            return safe.replace(new RegExp('(' + t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + ')', 'gi'), '<mark>$1</mark>');
+        } catch (e) { return safe; }
+    }
+
+    /* ============================================================
+       RENDER: main content
+    ============================================================ */
+    function render() {
+        renderDeptList();
+        const c = document.getElementById('content');
+        if (selectedDeptId && selectedRoomId) { renderRoom(c); }
+        else if (selectedDeptId) { renderDept(c); }
+        else { renderHome(c); }
+    }
+
+    /* ---- Home / overview ---- */
+    function renderHome(c) {
+        const deptCount = db.departments.length;
+        const roomCount = db.departments.reduce((s, d) => s + d.rooms.length, 0);
+        const itemCount = db.departments.reduce((s, d) => s + totalItems(d), 0);
+        let cards = db.departments.map(d => `
+            <div class="dept-overview-card" onclick="selectDept('${d.id}')">
+                <div class="dept-overview-icon">${d.icon || '🏢'}</div>
+                <div>
+                    <h3>${esc(d.name)}</h3>
+                    <p>${d.rooms.length} room${d.rooms.length !== 1 ? 's' : ''} • ${totalItems(d)} recorded items</p>
+                </div>
+            </div>`).join('');
+        c.innerHTML = `
+            <div class="section-head">
+                <div>
+                    <div class="section-title">Hospital Location Records</div>
+                    <div class="section-desc">Create and manage a location record for every department, ward and room. Select a department to begin.</div>
+                </div>
+                <div style="display:flex;gap:10px;flex-wrap:wrap;">
+                    <button class="btn btn-primary" onclick="openDeptModal()">＋ Add Department</button>
+                    <button class="btn btn-ghost" onclick="openPreview('all')">👁️ Live Preview All</button>
+                </div>
+            </div>
+            <div class="stat-row">
+                <div class="stat-tile"><div class="num">${deptCount}</div><div class="lbl">Departments / Wards</div></div>
+                <div class="stat-tile"><div class="num">${roomCount}</div><div class="lbl">Rooms / Areas</div></div>
+                <div class="stat-tile"><div class="num">${itemCount}</div><div class="lbl">Recorded Items</div></div>
+            </div>
+            <div class="dept-overview-grid">${cards}</div>`;
+    }
+
+    /* ---- Department view (rooms + in-location search) ---- */
+    function renderDept(c) {
+        const d = getDept(selectedDeptId);
+        if (!d) { selectedDeptId = null; return renderHome(c); }
+        // The sidebar search box filters the DEPARTMENT list only — it must
+        // never hide rooms inside an opened department (that made whole wards
+        // look nearly empty, e.g. "23 rooms / 599 items" showing one card).
+        // Searching *within* this location is the separate box below, whose
+        // term lives in deptViewTerm.
+        c.innerHTML = `
+            <div class="breadcrumb"><a onclick="goHome()">All Departments</a> › <strong>${esc(d.name)}</strong></div>
+            <div class="section-head">
+                <div>
+                    <div class="section-title">${d.icon || '🏢'} ${esc(d.name)}</div>
+                    <div class="section-desc">${d.rooms.length} room${d.rooms.length !== 1 ? 's' : ''} in this department • Each room is its own location record.</div>
+                </div>
+                <div style="display:flex;gap:10px;flex-wrap:wrap;">
+                    <button class="btn btn-primary" onclick="openRoomModal()">＋ Add Room</button>
+                    <button class="btn btn-ghost" onclick="openPreview('dept','${d.id}')">👁️ Preview</button>
+                    <button class="btn btn-ghost" onclick="printRecords('dept','${d.id}')">🖨️ Print Dept</button>
+                    <button class="btn btn-ghost" onclick="openDeptModal('${d.id}')">✎ Edit</button>
+                    <button class="btn btn-danger" onclick="deleteDept('${d.id}')">🗑 Delete</button>
+                </div>
+            </div>
+            <div class="loc-search-bar">
+                <div class="loc-search-wrap">
+                    <span class="loc-search-icon">🔍</span>
+                    <input type="text" class="loc-search" id="deptViewSearch"
+                           placeholder="Search rooms and items in ${escAttr(d.name)}…"
+                           value="${escAttr(deptViewTerm)}" oninput="onDeptViewSearch()">
+                    <button class="loc-search-clear" id="deptViewClear" title="Clear search"
+                            onclick="clearDeptViewSearch()" style="${deptViewTerm ? '' : 'display:none'}">✕</button>
+                </div>
+                <span class="loc-search-count" id="deptViewCount"></span>
+            </div>
+            <div id="deptViewBody"></div>`;
+        paintDeptView();
+    }
+
+    function roomCardHtml(d, r, term, matchCount) {
+        const n = (r.items || []).length;
+        const chip = (matchCount == null)
+            ? `<span class="room-chip ${n ? 'has-items' : ''}">${n} item${n !== 1 ? 's' : ''}</span>`
+            : `<span class="room-chip ${matchCount ? 'has-items' : ''}">${matchCount} of ${n} item${n !== 1 ? 's' : ''} match</span>`;
+        return `
+            <div class="room-card" onclick="${matchCount == null ? `selectRoom('${r.id}')` : `openRoomFromSearch('${r.id}')`}">
+                <h3>${highlight(r.title, term)}</h3>
+                <div class="room-loc">${esc(d.name)}</div>
+                <div class="room-card-foot">
+                    ${chip}
+                    <span style="font-size:0.72rem;color:var(--text-secondary);">${r.dateUpdated ? esc(r.dateUpdated) : 'No date'}</span>
+                </div>
+            </div>`;
+    }
+
+    /* Paints only the results below the search box, so typing never costs the
+       input its focus or caret position. */
+    const DEPT_HIT_LIMIT = 300;
+    function paintDeptView() {
+        const d = getDept(selectedDeptId);
+        const host = document.getElementById('deptViewBody');
+        if (!d || !host) return;
+        const raw = deptViewTerm.trim();
+        const term = raw.toLowerCase();
+        const countEl = document.getElementById('deptViewCount');
+        const clearBtn = document.getElementById('deptViewClear');
+        if (clearBtn) clearBtn.style.display = raw ? '' : 'none';
+
+        if (!term) {
+            host.innerHTML = `
+                <div class="card-grid">
+                    ${d.rooms.map(r => roomCardHtml(d, r, '', null)).join('')}
+                    <div class="add-tile" onclick="openRoomModal()">
+                        <span class="plus">＋</span><span>Add Room</span>
+                    </div>
+                </div>`;
+            if (countEl) countEl.textContent = '';
+            return;
+        }
+
+        const roomHits = [];
+        const itemHits = [];
+        d.rooms.forEach(r => {
+            const matches = (r.items || []).filter(it => itemMatches(it, term));
+            const titleHit = (r.title || '').toLowerCase().includes(term);
+            if (titleHit || matches.length) roomHits.push({ room: r, n: matches.length });
+            matches.forEach(it => itemHits.push({ room: r, it: it }));
+        });
+
+        if (!roomHits.length) {
+            host.innerHTML = `<div class="no-hits">Nothing in ${esc(d.name)} matches “${esc(raw)}”.</div>`;
+            if (countEl) countEl.textContent = 'No matches';
+            return;
+        }
+
+        let html = `<div class="card-grid">${roomHits.map(h => roomCardHtml(d, h.room, raw, h.n)).join('')}</div>`;
+        if (itemHits.length) {
+            const shown = itemHits.slice(0, DEPT_HIT_LIMIT);
+            html += `<div class="loc-hit-head">Matching items (${itemHits.length})</div>
+                <div class="loc-hit-list">${shown.map(h => `
+                    <div class="loc-hit" onclick="openRoomFromSearch('${h.room.id}')">
+                        <div class="loc-hit-main">
+                            <div class="loc-hit-title">${highlight(h.it.item || h.it.description || '(untitled item)', raw)}</div>
+                            <div class="loc-hit-sub">${highlight(h.it.description || '', raw)}${h.it.description ? ' • ' : ''}${esc(h.room.title)}${h.it.remarks ? ' • ' + highlight(h.it.remarks, raw) : ''}</div>
+                        </div>
+                        <div class="loc-hit-code">${highlight(h.it.assetCode || '—', raw)}</div>
+                    </div>`).join('')}</div>`;
+            if (itemHits.length > shown.length) {
+                html += `<div class="loc-more">Showing the first ${shown.length} of ${itemHits.length} matching items. Refine your search to see the rest.</div>`;
+            }
+        }
+        host.innerHTML = html;
+        if (countEl) {
+            countEl.textContent = roomHits.length + ' room' + (roomHits.length !== 1 ? 's' : '')
+                + ', ' + itemHits.length + ' item' + (itemHits.length !== 1 ? 's' : '');
+        }
+    }
+
+    let _deptViewTimer = null;
+    function onDeptViewSearch() {
+        const el = document.getElementById('deptViewSearch');
+        deptViewTerm = el ? el.value : '';
+        const clearBtn = document.getElementById('deptViewClear');
+        if (clearBtn) clearBtn.style.display = deptViewTerm.trim() ? '' : 'none';
+        clearTimeout(_deptViewTimer);
+        _deptViewTimer = setTimeout(paintDeptView, 140);
+    }
+    function clearDeptViewSearch() {
+        deptViewTerm = '';
+        const el = document.getElementById('deptViewSearch');
+        if (el) { el.value = ''; el.focus(); }
+        clearTimeout(_deptViewTimer);
+        paintDeptView();
+    }
+    /* Opening a room from a search result carries the term into the record so
+       the row you clicked is already in view. */
+    function openRoomFromSearch(roomId) {
+        roomViewTerm = deptViewTerm;
+        selectRoom(roomId, true);
+    }
+
+    /* ---- Room record editor ---- */
+    function renderRoom(c) {
+        const d = getDept(selectedDeptId);
+        const r = getRoom(d, selectedRoomId);
+        if (!r) { selectedRoomId = null; return renderDept(c); }
+        c.innerHTML = `
+            <div class="breadcrumb"><a onclick="goHome()">All Departments</a> › <a onclick="selectDept('${d.id}')">${esc(d.name)}</a> › <strong>${esc(r.title)}</strong></div>
+            <div class="record-toolbar">
+                <button class="btn btn-green" onclick="printRecords('room','${d.id}','${r.id}')">🖨️ Print this Record (PDF)</button>
+                <button class="btn btn-ghost" onclick="openPreview('room','${d.id}','${r.id}')">👁️ Preview</button>
+                <button class="btn btn-ghost" onclick="selectDept('${d.id}')">← Back to ${esc(d.name)}</button>
+                <button class="btn btn-ghost" onclick="openRoomModal('${r.id}')">✎ Rename Room</button>
+                <button class="btn btn-danger" onclick="deleteRoom('${r.id}')">🗑 Delete Room</button>
+                <span class="save-hint" id="saveHint" style="margin-left:auto;align-self:center;">All changes save automatically</span>
+            </div>
+            <div class="record-sheet">
+                <div class="ed-letterhead">
+                    <img src="${(typeof LOGO_MOH!=='undefined')?LOGO_MOH:''}" alt="Ministry of Health &amp; Wellness">
+                    <div class="ed-lh-text">
+                        <div class="ed-lh-title">Southern Regional Health Authority</div>
+                        <div class="ed-lh-tagline"><b>C</b>ompassion | <b>A</b>ccountability | <b>R</b>espect | <b>E</b>fficiency</div>
+                    </div>
+                    <img src="${(typeof LOGO_SRHA!=='undefined')?LOGO_SRHA:''}" alt="SRHA" class="ed-lh-srha">
+                </div>
+                <div class="rec-title">LOCATION RECORD</div>
+                <div class="rec-fields">
+                    <div class="rec-field-row"><label>Location:</label><input type="text" value="${escAttr(d.name)}" onchange="updateDeptName('${d.id}', this.value)"></div>
+                    <div class="rec-field-row"><label>Room Title:</label><input type="text" value="${escAttr(r.title)}" onchange="updateRoomField('${r.id}','title',this.value)"></div>
+                    <div class="rec-field-row"><label>Verified by and date:</label><input type="text" value="${escAttr(r.verifiedBy||'')}" placeholder="Name & date" onchange="updateRoomField('${r.id}','verifiedBy',this.value)"></div>
+                    <div class="rec-field-row"><label>Date updated:</label><input type="text" value="${escAttr(r.dateUpdated||'')}" placeholder="e.g. Thursday, 24 October 2024" onchange="updateRoomField('${r.id}','dateUpdated',this.value)"></div>
+                </div>
+                <div class="rec-search-bar">
+                    <div class="loc-search-wrap">
+                        <span class="loc-search-icon">🔍</span>
+                        <input type="text" class="loc-search" id="roomSearch"
+                               placeholder="Search items in this record…"
+                               value="${escAttr(roomViewTerm)}" oninput="onRoomSearch()">
+                        <button class="loc-search-clear" id="roomSearchClear" title="Clear search"
+                                onclick="clearRoomSearch()" style="${roomViewTerm ? '' : 'display:none'}">✕</button>
+                    </div>
+                    <span class="loc-search-count" id="roomSearchCount"></span>
+                </div>
+                <div class="items-table-scroll">
+                <table class="items-table">
+                    <thead>
+                        <tr>
+                            <th class="col-num">#</th>
+                            <th class="col-item">Item</th>
+                            <th class="col-desc">Description/Make</th>
+                            <th class="col-code">Asset Code</th>
+                            <th class="col-remarks">Remarks</th>
+                            <th class="col-act"></th>
+                        </tr>
+                    </thead>
+                    <tbody id="itemsBody"></tbody>
+                </table>
+                </div>
+                <button class="btn btn-primary btn-sm add-row-btn" onclick="addItem()">＋ Add Item Row</button>
+                <div class="rec-footer-note">⚠️ ${APPROVAL_NOTE}</div>
+            </div>`;
+        // paintRoomRows fills the table body and grows the cells — now, and
+        // again once the browser has laid the table out (the first pass is a
+        // no-op while column widths are still unresolved).
+        paintRoomRows();
+    }
+
+    /* ---- Row filter inside an open location record ---- */
+    /* Rows keep their real position in the record, so row 47 still reads 47
+       while a filter is on. */
+    function visibleRoomItems(r) {
+        const term = roomViewTerm.trim().toLowerCase();
+        return (r.items || [])
+            .map((it, i) => ({ it: it, i: i }))
+            .filter(x => !term || itemMatches(x.it, term));
+    }
+
+    function paintRoomRows() {
+        const d = getDept(selectedDeptId);
+        const r = getRoom(d, selectedRoomId);
+        const body = document.getElementById('itemsBody');
+        if (!r || !body) return;
+        const raw = roomViewTerm.trim();
+        const vis = visibleRoomItems(r);
+        const total = (r.items || []).length;
+        // "nothing matches" only when something was actually searched for —
+        // a brand-new record with no rows yet is empty, not a failed search.
+        body.innerHTML = vis.length
+            ? vis.map(x => rowHtml(x.it, x.i)).join('')
+            : (raw ? `<tr><td colspan="6" class="no-hits">No item in this record matches “${esc(raw)}”.</td></tr>` : '');
+        const countEl = document.getElementById('roomSearchCount');
+        if (countEl) {
+            countEl.textContent = raw
+                ? vis.length + ' of ' + total + ' item' + (total !== 1 ? 's' : '') + ' shown'
+                : '';
+        }
+        const clearBtn = document.getElementById('roomSearchClear');
+        if (clearBtn) clearBtn.style.display = raw ? '' : 'none';
+        growAllCells();
+        requestAnimationFrame(growAllCells);
+    }
+
+    let _roomSearchTimer = null;
+    function onRoomSearch() {
+        const el = document.getElementById('roomSearch');
+        roomViewTerm = el ? el.value : '';
+        const clearBtn = document.getElementById('roomSearchClear');
+        if (clearBtn) clearBtn.style.display = roomViewTerm.trim() ? '' : 'none';
+        clearTimeout(_roomSearchTimer);
+        _roomSearchTimer = setTimeout(paintRoomRows, 140);
+    }
+    function clearRoomSearch(keepFocusOff) {
+        roomViewTerm = '';
+        const el = document.getElementById('roomSearch');
+        if (el) { el.value = ''; if (!keepFocusOff) el.focus(); }
+        clearTimeout(_roomSearchTimer);
+        paintRoomRows();
+    }
+
+    function rowHtml(it, i) {
+        return `
+        <tr data-id="${it.id}"${it.disposed ? ' class="row-boarded"' : ''}>
+            <td class="col-num" data-label="#">${i + 1}${it.disposed ? '<span class="bos-badge" title="Written off at Board of Survey">BOS</span>' : ''}</td>
+            <td data-label="Item"><textarea class="cell-input" rows="1" onchange="updateItem('${it.id}','item',this.value)" oninput="autoGrow(this)" placeholder="Item">${esc(it.item||'')}</textarea></td>
+            <td data-label="Description/Make"><textarea class="cell-input" rows="1" onchange="updateItem('${it.id}','description',this.value)" oninput="autoGrow(this)" placeholder="Description / Make">${esc(it.description||'')}</textarea></td>
+            <td data-label="Asset Code"><div class="assetcode-cell"><textarea class="cell-input" rows="1" onchange="updateItem('${it.id}','assetCode',this.value)" oninput="autoGrow(this); codeCheckInput(this,'${it.id}')" onfocus="codeCheckFocus(this,'${it.id}')" onblur="codeCheckBlur()" placeholder="Asset Code">${esc(it.assetCode||'')}</textarea><button type="button" class="assetcode-lookup" title="Assign the next code in this item's series for the department" onclick="assignNextSeriesCode('${it.id}')">🔢</button><button type="button" class="assetcode-lookup" title="Look up a standard asset code" onclick="openLocAssetCodePicker('${it.id}')">🔍</button></div></td>
+            <td data-label="Remarks"><textarea class="cell-input" rows="1" onchange="updateItem('${it.id}','remarks',this.value)" oninput="autoGrow(this)" placeholder="Remarks">${esc(it.remarks||'')}</textarea></td>
+            <td class="col-act" data-label="Actions" style="white-space:nowrap;">
+                <button class="row-move" title="Move this item to another room or department" onclick="openMoveItemModal('${it.id}')">➡️</button>
+                <button class="row-del" title="Delete row" onclick="deleteItem('${it.id}')">✕</button>
+            </td>
+        </tr>`;
+    }
+
+    function autoGrow(el) {
+        if (!el) return;
+        el.style.height = 'auto';
+        // A textarea that is not laid out yet (hidden tab, iframe still
+        // sizing) reports scrollHeight 0 — leave the CSS min-height alone
+        // rather than collapsing the row to nothing.
+        if (el.scrollHeight) el.style.height = el.scrollHeight + 'px';
+    }
+    /* Re-measure every cell of the record. A cell keeps whatever height it
+       was last given, so any change of column width — first render, phone
+       rotation, the dashboard iframe resizing, the switch to the stacked
+       phone layout — wraps the text onto more lines and clips it unless the
+       textareas are grown again. */
+    function growAllCells() {
+        const cells = document.querySelectorAll('table.items-table .cell-input');
+        if (!cells.length) return;
+        // Batched on purpose. Growing one cell at a time writes a height, then
+        // reads scrollHeight, which forces the browser to re-lay-out the whole
+        // table before every single read — 4,260 textareas in the largest
+        // record made that ~28s, and the row filter re-measures on each
+        // keystroke. Clearing every height, then reading every height, then
+        // writing every height costs two layouts instead of thousands.
+        for (let i = 0; i < cells.length; i++) cells[i].style.height = 'auto';
+        const h = new Array(cells.length);
+        for (let i = 0; i < cells.length; i++) h[i] = cells[i].scrollHeight;
+        // A cell that is not laid out yet (hidden tab, iframe still sizing)
+        // reports 0 — leave it on the CSS min-height, as autoGrow does.
+        for (let i = 0; i < cells.length; i++) if (h[i]) cells[i].style.height = h[i] + 'px';
+    }
+
+    /* ============================================================
+       Asset code lookup pop-up (shared reference from asset-codes.js)
+       Called with an item id  -> pick mode (fills that row's Asset Code).
+       Called with null         -> browse mode (click copies the code).
+    ============================================================ */
+    let _acpTargetItem = null;
+    function _allAssetCodes() {
+        if (typeof window.getAssetCodesShared !== 'function') return [];
+        return [
+            ...window.getAssetCodesShared('1998').map(i => ({ ...i, year: '1998' })),
+            ...window.getAssetCodesShared('1997').map(i => ({ ...i, year: '1997' })),
+            ...window.getAssetCodesShared('new').map(i => ({ ...i, year: 'new' }))
+        ].sort((a, b) => a.desc.localeCompare(b.desc));
+    }
+    function openLocAssetCodePicker(itemId) {
+        _acpTargetItem = itemId || null;
+        const hint = document.getElementById('acpHint');
+        hint.textContent = _acpTargetItem
+            ? 'Click a code to insert it into this Asset Code field.'
+            : 'Browse the standard asset code reference. Click a row to copy the code.';
+        document.getElementById('acpSearch').value = '';
+        renderLocPickerList();
+        document.getElementById('acpOverlay').classList.add('open');
+        setTimeout(() => document.getElementById('acpSearch').focus(), 50);
+    }
+    function closeLocPicker() {
+        document.getElementById('acpOverlay').classList.remove('open');
+        _acpTargetItem = null;
+    }
+    function renderLocPickerList() {
+        const listEl = document.getElementById('acpList');
+        const term = (document.getElementById('acpSearch').value || '').toLowerCase().trim();
+        const all = _allAssetCodes();
+        if (!all.length) { listEl.innerHTML = '<div style="padding:18px;text-align:center;color:#7078a0;font-size:0.85rem;">Asset code list unavailable.</div>'; return; }
+        const filtered = term ? all.filter(i => i.code.toLowerCase().includes(term) || i.desc.toLowerCase().includes(term)) : all;
+        if (!filtered.length) { listEl.innerHTML = '<div style="padding:18px;text-align:center;color:#7078a0;font-size:0.85rem;">No matching asset codes.</div>'; return; }
+        const rows = filtered.slice(0, 500).map(i => {
+            const label = i.year === 'new' ? 'New' : i.year;
+            const badgeCls = i.year === 'new' ? 'acp-badge new' : 'acp-badge';
+            return `<div class="acp-row" onclick="pickLocAssetCode(this)" data-code="${escAttr(i.code)}" data-desc="${escAttr(i.desc)}">`
+                + `<span><strong>${esc(i.code)}</strong> &nbsp; ${esc(i.desc)}</span><span class="${badgeCls}">${label}</span></div>`;
+        });
+        if (filtered.length > 500) rows.push('<div style="padding:10px 14px;color:#7078a0;font-size:0.8rem;">Showing first 500 of ' + filtered.length + '. Refine your search to see more.</div>');
+        listEl.innerHTML = rows.join('');
+    }
+    function pickLocAssetCode(rowEl) {
+        const code = rowEl.getAttribute('data-code') || '';
+        const desc = rowEl.getAttribute('data-desc') || '';
+        if (_acpTargetItem) {
+            updateItem(_acpTargetItem, 'assetCode', code);
+            const tr = document.querySelector('tr[data-id="' + _acpTargetItem + '"]');
+            if (tr) { const tas = tr.querySelectorAll('textarea.cell-input'); if (tas[2]) { tas[2].value = code; autoGrow(tas[2]); } }
+            closeLocPicker();
+        } else {
+            try { if (navigator.clipboard) navigator.clipboard.writeText(code); } catch (e) {}
+            rowEl.style.background = 'rgba(26,188,156,0.22)';
+            document.getElementById('acpHint').textContent = 'Copied "' + code + ' - ' + desc + '" to clipboard.';
+        }
+    }
+
+    /* ============================================================
+       Navigation
+    ============================================================ */
+    function goHome() {
+        selectedDeptId = null; selectedRoomId = null;
+        deptViewTerm = ''; roomViewTerm = '';
+        render();
+    }
+    function selectDept(id) {
+        // Coming back to the department you were searching keeps that search;
+        // switching to a different department starts clean.
+        if (id !== selectedDeptId) deptViewTerm = '';
+        selectedDeptId = id; selectedRoomId = null; roomViewTerm = '';
+        render(); window.scrollTo(0,0);
+    }
+    function selectRoom(id, keepFilter) {
+        if (!keepFilter) roomViewTerm = '';
+        selectedRoomId = id; render(); window.scrollTo(0,0); growAllCells();
+    }
+
+    // Debounced: each keystroke re-scans every department/room/item and
+    // rebuilds the view; coalescing to ~160ms keeps typing smooth at scale.
+    let _searchTimer = null;
+    function onSearch() {
+        searchTerm = document.getElementById('deptSearch').value.trim();
+        clearTimeout(_searchTimer);
+        _searchTimer = setTimeout(render, 160);
+    }
+
+    /* ============================================================
+       CRUD — departments
+    ============================================================ */
+    const ICONS = ['🏢','🛏️','🩺','🗂️','🏛️','🚑','🧪','💊','🔬','🩻','🍽️','🚿','👮','📞','🚗','🧯','⚙️','📋'];
+
+    function openDeptModal(id) {
+        const editing = id ? getDept(id) : null;
+        const chosen = editing ? editing.icon : '🏢';
+        document.getElementById('modalBox').innerHTML = `
+            <h3>${editing ? 'Edit Department' : 'Add Department / Ward'}</h3>
+            <p class="sub">${editing ? 'Update the department details.' : 'Create a new department or ward section.'}</p>
+            <label>Department / Ward name</label>
+            <input type="text" id="mDeptName" value="${editing ? escAttr(editing.name) : ''}" placeholder="e.g. Male Medical Ward">
+            <label>Icon</label>
+            <div class="icon-picker" id="mIconPicker">
+                ${ICONS.map(ic => `<button type="button" class="icon-opt ${ic===chosen?'sel':''}" onclick="pickIcon(this)">${ic}</button>`).join('')}
+            </div>
+            <label>Note (optional)</label>
+            <input type="text" id="mDeptNote" value="${editing ? escAttr(editing.note||'') : ''}" placeholder="Floor / building / description">
+            <div class="modal-actions">
+                <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+                <button class="btn btn-primary" onclick="saveDept(${editing ? `'${id}'` : 'null'})">${editing ? 'Save' : 'Create'}</button>
+            </div>`;
+        openModal();
+        setTimeout(() => document.getElementById('mDeptName').focus(), 50);
+    }
+    function pickIcon(btn) {
+        btn.parentNode.querySelectorAll('.icon-opt').forEach(b => b.classList.remove('sel'));
+        btn.classList.add('sel');
+    }
+    function saveDept(id) {
+        const name = document.getElementById('mDeptName').value.trim();
+        if (!name) { toast('Enter a department name', 'error'); return; }
+        const iconEl = document.querySelector('#mIconPicker .icon-opt.sel');
+        const icon = iconEl ? iconEl.textContent : '🏢';
+        const note = document.getElementById('mDeptNote').value.trim();
+        if (id) {
+            const d = getDept(id);
+            d.name = name; d.icon = icon; d.note = note;
+            toast('Department updated', 'success');
+        } else {
+            const d = { id: uid('dept'), name, icon, location: name, note, rooms: [] };
+            db.departments.push(d);
+            deptViewTerm = ''; roomViewTerm = '';   // the new department opens unfiltered
+            selectedDeptId = d.id;
+            // re-creating a previously deleted department lifts its tombstone
+            if (window.mphClearLocationTombstone) {
+                window.mphClearLocationTombstone('departments', name.replace(/\s+/g, ' ').trim().toLowerCase());
+            }
+            toast('Department added', 'success');
+        }
+        save(); closeModal(); render();
+    }
+    function deleteDept(id) {
+        const d = getDept(id);
+        confirmModal(`Delete “${d.name}”?`,
+            `This removes the department and all ${d.rooms.length} room record(s), and DELETES from the Asset Register every asset whose code is not recorded in another department. This cannot be undone.`, () => {
+            // tombstone the department and everything inside it so cloud
+            // syncs and seed refreshes don't bring the deleted data back
+            if (window.mphAddLocationTombstone) {
+                window.mphAddLocationTombstone('departments', String(d.name || '').replace(/\s+/g, ' ').trim().toLowerCase());
+                (d.rooms || []).forEach(r => {
+                    window.mphAddLocationTombstone('rooms', r.id);
+                    // by row id AND asset code, so the item can't return under
+                    // a fresh id from a seed, a peer device or a restore
+                    (r.items || []).forEach(it => window.mphTombstoneLocationItem(it));
+                });
+            }
+            const goneItems = (d.rooms || []).reduce((acc, r) => acc.concat(r.items || []), []);
+            db.departments = db.departments.filter(x => x.id !== id);
+            goneItems.forEach(queueRegisterDelete);   // after the removal — see the guard
+            if (selectedDeptId === id) {
+                selectedDeptId = null; selectedRoomId = null;
+                deptViewTerm = ''; roomViewTerm = '';
+            }
+            save(); render(); toast('Department deleted', 'success');
+        });
+    }
+    function updateDeptName(id, val) {
+        const d = getDept(id); if (!d) return;
+        d.name = val.trim() || d.name; d.location = d.name; save(); renderDeptList();
+    }
+
+    /* ============================================================
+       CRUD — rooms
+    ============================================================ */
+    function openRoomModal(id) {
+        const d = getDept(selectedDeptId);
+        const editing = id ? getRoom(d, id) : null;
+        document.getElementById('modalBox').innerHTML = `
+            <h3>${editing ? 'Rename Room' : 'Add Room'}</h3>
+            <p class="sub">Department: <strong>${esc(d.name)}</strong></p>
+            <label>Room title</label>
+            <input type="text" id="mRoomTitle" value="${editing ? escAttr(editing.title) : ''}" placeholder="e.g. Room IA-068 (Patient Bay)">
+            <label>Date updated (optional)</label>
+            <input type="text" id="mRoomDate" value="${editing ? escAttr(editing.dateUpdated||'') : ''}" placeholder="e.g. Thursday, 24 October 2024">
+            <div class="modal-actions">
+                <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+                <button class="btn btn-primary" onclick="saveRoom(${editing ? `'${id}'` : 'null'})">${editing ? 'Save' : 'Create'}</button>
+            </div>`;
+        openModal();
+        setTimeout(() => document.getElementById('mRoomTitle').focus(), 50);
+    }
+    function saveRoom(id) {
+        const d = getDept(selectedDeptId);
+        const title = document.getElementById('mRoomTitle').value.trim();
+        if (!title) { toast('Enter a room title', 'error'); return; }
+        const date = document.getElementById('mRoomDate').value.trim();
+        if (id) {
+            const r = getRoom(d, id); r.title = title; r.dateUpdated = date;
+            toast('Room updated', 'success');
+        } else {
+            const r = { id: uid('room'), title, verifiedBy: '', dateUpdated: date, note: '', items: [] };
+            d.rooms.push(r);
+            roomViewTerm = '';                      // the new room opens unfiltered
+            selectedRoomId = r.id;
+            toast('Room added', 'success');
+        }
+        save(); closeModal(); render();
+    }
+    function deleteRoom(id) {
+        const d = getDept(selectedDeptId);
+        const r = getRoom(d, id);
+        confirmModal(`Delete “${r.title}”?`,
+            `This removes the room record and its ${(r.items||[]).length} item(s), and DELETES from the Asset Register every asset whose code is not recorded in another room. This cannot be undone.`, () => {
+            if (window.mphAddLocationTombstone) {
+                window.mphAddLocationTombstone('rooms', r.id);
+                (r.items || []).forEach(it => window.mphTombstoneLocationItem(it));
+            }
+            const goneItems = (r.items || []).slice();
+            d.rooms = d.rooms.filter(x => x.id !== id);
+            goneItems.forEach(queueRegisterDelete);   // after the removal — see the guard
+            if (selectedRoomId === id) selectedRoomId = null;
+            save(); render(); toast('Room deleted', 'success');
+        });
+    }
+    function updateRoomField(id, field, val) {
+        const d = getDept(selectedDeptId);
+        const r = getRoom(d, id); if (!r) return;
+        r[field] = val; save(); flashSaved();
+        if (field === 'title') renderDeptList();
+    }
+
+    /* ============================================================
+       CRUD — items
+    ============================================================ */
+    function addItem() {
+        const d = getDept(selectedDeptId);
+        const r = getRoom(d, selectedRoomId);
+        r.items = r.items || [];
+        // isNew marks a row that has never been reconciled to the register. It
+        // is what stops a brand-new physical item from renaming an existing
+        // asset just because someone typed that asset's code into the row
+        // first (copying a neighbour's label) before asking for a free one.
+        // The dashboard clears it once the row and an asset are paired.
+        const it = { id: uid('item'), item: '', description: '', assetCode: '', remarks: '', isNew: true };
+        r.items.push(it);
+        save();
+        const body = document.getElementById('itemsBody');
+        let tr;
+        if (roomViewTerm.trim()) {
+            // A blank new row matches no search, so an active filter would
+            // swallow it. Drop the filter and show the whole record instead.
+            clearRoomSearch(true);   // the new row takes the focus, not the search box
+            tr = body.querySelector('tr[data-id="' + it.id + '"]');
+        } else {
+            const tmp = document.createElement('tbody');
+            tmp.innerHTML = rowHtml(it, r.items.length - 1);
+            tr = tmp.firstElementChild;
+            body.appendChild(tr);
+        }
+        if (tr) {
+            tr.querySelectorAll('.cell-input').forEach(autoGrow);
+            const first = tr.querySelector('.cell-input');
+            if (first) first.focus();
+        }
+        renderDeptList();
+    }
+    function updateItem(id, field, val) {
+        const d = getDept(selectedDeptId);
+        const r = getRoom(d, selectedRoomId);
+        const it = r.items.find(x => x.id === id); if (!it) return;
+        const before = it[field];
+        // unchanged (the panel's Use button already saved it) — nothing to send
+        if (field === 'assetCode' && before === val) return;
+        it[field] = val;
+        if (field === 'assetCode') {
+            // Typing a code here is a deliberate placement: lift any deletion
+            // tombstone on that code so the row isn't pruned by the next merge.
+            if (window.mphUntombstoneLocationItem) window.mphUntombstoneLocationItem(it);
+            queueCodeChange(it, before, val, d, r);
+            warnIfCodeOnFile(it, val);
+        } else {
+            // description / item / remarks edited here are the same facts the
+            // register holds, so the register is updated to match
+            queueRegisterChange({ op: 'edit', code: it.assetCode, field: field, value: val,
+                itemId: it.id, regId: it.regId || null });
+        }
+        save(); flashSaved();
+    }
+    /* Giving a row a code means one of two very different things, and the
+       code string alone cannot tell them apart:
+
+         re-code  — this row already IS a register asset (it carries regId, or
+                    its previous code matches one); the asset is renamed and
+                    the old code kept as an alias.
+         create   — this row is a newly surveyed item; the register has never
+                    heard of it and must gain an asset.
+
+       Treating the second as the first is what silently renamed an unrelated
+       asset and left the new item out of the register entirely, so the two
+       stores drifted and duplicates got added by hand to paper over it. */
+    function queueCodeChange(it, oldCode, newCode, d, r) {
+        // A row added in this session is a newly surveyed item, so it creates
+        // an asset — it never re-codes one, whatever code was typed into it
+        // on the way. Only a row that already stands for a register asset
+        // (linked by regId, or whose previous code is one the register holds)
+        // may rename that asset.
+        const linked = !it.isNew && (it.regId || codeIsInRegister(oldCode));
+        if (linked) {
+            queueRegisterChange({ op: 'code', code: newCode, oldCode: oldCode,
+                dept: d.name, room: r.title, itemId: it.id, regId: it.regId || null });
+        } else {
+            queueRegisterChange({ op: 'create', code: newCode, dept: d.name, room: r.title,
+                item: it.item || '', description: it.description || it.item || '',
+                remarks: it.remarks || '', itemId: it.id });
+        }
+    }
+    /* The Asset Register, read-only, from wherever the freshest copy is.
+       Embedded in the dashboard that is its live in-memory inventory; opened
+       on its own it is the register's own IndexedDB store, which this page
+       reads directly. Either way this page never writes to the register —
+       changes go through the queue the dashboard drains. */
+    function registerAssets() {
+        try {
+            if (window.parent && window.parent !== window &&
+                typeof window.parent.loadAssetsFromStorage === 'function') {
+                const live = Array.isArray(window.parent.allAssetsData) ? window.parent.allAssetsData : [];
+                return live.concat(window.parent.loadAssetsFromStorage() || []);
+            }
+        } catch (e) { /* cross-origin or not embedded — fall through */ }
+        return (window.mphGetRegisterAssetsAny && window.mphGetRegisterAssetsAny()) || [];
+    }
+    /* Does the register already hold this code (as a code or an alias)? */
+    function codeIsInRegister(code) {
+        if (!code || !window.mphCodeKey) return false;
+        const key = window.mphCodeKey(code);
+        if (!key) return false;
+        return registerAssets().some(a => a && [a.assetCode].concat(a.aliases || [])
+            .some(c => window.mphCodeKey(c) === key));
+    }
+    /* Send a change made here to the Asset Register. The dashboard drains the
+       queue on load and whenever it hears the records changed, so this works
+       from the embedded frame AND from this page opened on its own. */
+    function queueRegisterChange(op) {
+        if (!op || !window.mphQueueRegisterChange) return;
+        if (!op.code && !op.oldCode) return;        // nothing to match on
+        window.mphQueueRegisterChange(op);
+    }
+    /* Deleting a row here deletes the asset from the Asset Register too.
+       Call AFTER the row has been removed from `db`: the guard below asks
+       whether any room still lists that code, and hundreds of codes appear on
+       more than one room sheet — removing one survey row must not delete an
+       asset another room still records. The dashboard re-checks this when it
+       drains the queue, so a stale queue entry can't delete the wrong asset. */
+    function queueRegisterDelete(it) {
+        if (!it || !it.assetCode) return;
+        if (window.mphCodeStillInRecords && window.mphCodeStillInRecords(db, it.assetCode)) return;
+        queueRegisterChange({ op: 'delete', code: it.assetCode, description: it.description || it.item || '',
+            itemId: it.id, regId: it.regId || null });
+    }
+
+    /* Assign the next code in series to a Location Records item. The item
+       group is inferred from the item's existing/placeholder code or the
+       description; the department token + next free sequence produce the
+       code. When embedded, the dashboard's fuller series (register +
+       inventory + records) is used; standalone, records are scanned. */
+    function assignNextSeriesCode(id) {
+        const d = getDept(selectedDeptId);
+        const r = getRoom(d, selectedRoomId);
+        const it = r.items.find(x => x.id === id); if (!it) return;
+        const series = nextCodeSeries(d.name);
+        if (!series.length) { toast('No existing coded series for this department yet — enter the first code manually.', 'error'); return; }
+        // infer the item group from the current code, else pick the group
+        // whose description best matches this item
+        let group = null;
+        const p = window.mphParseCode && it.assetCode ? window.mphParseCode(it.assetCode) : null;
+        if (p && p.item) group = String(p.item);
+        let chosen = group ? series.find(s => s.group === group) : null;
+        if (!chosen) {
+            const hay = ((it.item || '') + ' ' + (it.description || '')).toLowerCase();
+            chosen = series.find(s => s.desc && hay && (hay.indexOf(s.desc.toLowerCase().split(',')[0]) >= 0 ||
+                s.desc.toLowerCase().split(',')[0].indexOf(hay.split(' ')[0]) >= 0));
+        }
+        if (!chosen) {
+            // let the user pick from the series list
+            openSeriesPickModal(id, series);
+            return;
+        }
+        applySeriesCode(id, chosen.nextCode);
+    }
+    /* Live code check — the same panel as the dashboard's Add/Edit Asset form
+       (drawn by mphRenderCodeCheck in asset-normalizer.js). One panel, pinned
+       under whichever Asset Code cell has the focus: while a code is typed it
+       says whether that number is already on file under any spelling, and
+       shows its series — how many are on file, the highest, the next free
+       code (Use puts it on the row) and the numbers nearest the typed one. */
+    let _ccEl = null, _ccTa = null, _ccItemId = null, _ccTimer = null, _ccSrc = null;
+    function codeCheckEl() {
+        if (_ccEl) return _ccEl;
+        if (window.mphEnsureCodeCheckStyles) window.mphEnsureCodeCheckStyles();
+        _ccEl = document.createElement('div');
+        _ccEl.className = 'asset-code-check is-floating';
+        _ccEl.setAttribute('role', 'status');
+        _ccEl.setAttribute('aria-live', 'polite');
+        _ccEl.hidden = true;
+        // clicking in the panel must not take the focus from the cell (that
+        // would close the panel before its Use button gets the click)
+        _ccEl.addEventListener('mousedown', e => e.preventDefault());
+        document.body.appendChild(_ccEl);
+        window.addEventListener('scroll', positionCodeCheck, true);
+        window.addEventListener('resize', positionCodeCheck);
+        return _ccEl;
+    }
+    function codeCheckFocus(ta, id) {
+        _ccTa = ta; _ccItemId = id;
+        // the register and the write-offs do not change while a cell is being
+        // typed in — read them once per focus, not per keystroke
+        _ccSrc = { assets: registerAssets(), boarded: boardedCodes() };
+        renderCodeCheck();
+    }
+    function codeCheckInput(ta, id) {
+        if (_ccTa !== ta || !_ccSrc) { codeCheckFocus(ta, id); return; }
+        clearTimeout(_ccTimer);
+        _ccTimer = setTimeout(renderCodeCheck, 220);
+    }
+    function codeCheckBlur() {
+        setTimeout(() => { if (!_ccTa || document.activeElement !== _ccTa) hideCodeCheck(); }, 150);
+    }
+    function hideCodeCheck() {
+        clearTimeout(_ccTimer);
+        if (_ccEl) { _ccEl.hidden = true; _ccEl.innerHTML = ''; }
+        _ccTa = null; _ccItemId = null; _ccSrc = null;
+    }
+    function renderCodeCheck() {
+        if (!_ccTa || !document.body.contains(_ccTa) || !window.mphRenderCodeCheck) { hideCodeCheck(); return; }
+        const d = getDept(selectedDeptId);
+        const r = d ? getRoom(d, selectedRoomId) : null;
+        const it = r ? (r.items || []).find(x => x.id === _ccItemId) : null;
+        const src = _ccSrc || { assets: registerAssets(), boarded: boardedCodes() };
+        let out = null;
+        try {
+            out = window.mphRenderCodeCheck(_ccTa.value, {
+                assets: src.assets, records: db, boarded: src.boarded,
+                deptName: d ? d.name : '',
+                deptLabel: "this Location Record's department",
+                assetId: it ? (it.regId || null) : null,
+                itemId: _ccItemId,
+                ownCode: it ? it.assetCode : null,
+                selfLabel: 'row',
+                seriesForDept: n => window.mphComputeNextCodeSeries(n, src.assets, db, src.boarded),
+                useAction: 'useCodeCheckSuggestion'
+            });
+        } catch (e) { console.warn('Code check failed:', e); out = null; }
+        const el = codeCheckEl();
+        if (!out) { el.hidden = true; el.innerHTML = ''; return; }
+        const changed = el.innerHTML !== out.html;
+        el.className = 'asset-code-check is-floating ' + out.cls;
+        if (changed) { el.innerHTML = out.html; el.scrollTop = 0; }   // new content reads from its heading
+        el.hidden = false;
+        positionCodeCheck();
+    }
+    function positionCodeCheck() {
+        if (!_ccEl || _ccEl.hidden || !_ccTa) return;
+        const anchor = _ccTa.closest('.assetcode-cell') || _ccTa;
+        const rc = anchor.getBoundingClientRect();
+        const vw = window.innerWidth, vh = window.innerHeight;
+        // the sticky page header covers the top of the view: the panel stays
+        // below it, and a cell scrolled up under it has no panel
+        const hdr = document.querySelector('.app-header');
+        const hb = hdr ? hdr.getBoundingClientRect() : null;
+        const topLimit = (hb && hb.bottom > 0 && getComputedStyle(hdr).position !== 'static') ? hb.bottom : 0;
+        if (rc.bottom < topLimit + 4 || rc.top > vh) { _ccEl.style.visibility = 'hidden'; return; }
+        _ccEl.style.visibility = '';
+        const width = Math.min(520, vw - 16);
+        _ccEl.style.width = width + 'px';
+        _ccEl.style.left = Math.max(8, Math.min(rc.left, vw - width - 8)) + 'px';
+        const below = vh - rc.bottom - 12, above = rc.top - topLimit - 12;
+        if (below < 170 && above > below) {
+            // no room under the cell: open upwards
+            _ccEl.style.top = 'auto';
+            _ccEl.style.bottom = (vh - rc.top + 4) + 'px';
+            _ccEl.style.maxHeight = Math.max(120, Math.min(above, vh * 0.45)) + 'px';
+        } else {
+            _ccEl.style.bottom = 'auto';
+            _ccEl.style.top = (rc.bottom + 4) + 'px';
+            _ccEl.style.maxHeight = Math.max(120, Math.min(below, vh * 0.45)) + 'px';
+        }
+    }
+    // "Use BRH/…" in the panel: the code goes on the row, saved like a typed one
+    function useCodeCheckSuggestion(code) {
+        if (!_ccTa || !_ccItemId) return;
+        _ccTa.value = code;
+        autoGrow(_ccTa);
+        updateItem(_ccItemId, 'assetCode', code);
+        _ccTa.focus();
+        renderCodeCheck();
+    }
+    /* The number just given to a row is already on file under some
+       spelling — BRH/AC/133/01, BRH/133/01/AC and BRH/ADM/AC/133/01 are one
+       code. The code is kept (the user may be recording a real label); this
+       says where else it is so a duplicate is not made by accident. */
+    function warnIfCodeOnFile(it, code) {
+        if (!code || !String(code).trim() || !window.mphFindCodeOnFile) return;
+        try {
+            const hit = window.mphFindCodeOnFile(String(code).trim(), registerAssets(), db, boardedCodes(),
+                { itemId: it.id, assetId: it.regId || null });
+            if (!hit) return;
+            const where = hit.source === 'register'
+                ? 'in the Asset Register' + (hit.asset && hit.asset.assetCode !== hit.code ? ' (as an earlier code of ' + hit.asset.assetCode + ')' : '') +
+                  (hit.asset && hit.asset.department ? ' — ' + hit.asset.department : '')
+                : hit.source === 'records'
+                    ? 'on ' + (hit.dept || '') + (hit.room ? ' / ' + hit.room : '')
+                    : 'on the Board of Survey';
+            toast('⚠️ ' + code + ' is already on file as ' + hit.code + ' ' + where + '. Use 🔢 for the next free number.', 'error', 7000);
+        } catch (e) { /* a warning only */ }
+    }
+    /* Next code in each series for a department.
+       Computed by the shared engine in asset-normalizer.js over BOTH stores —
+       the Asset Register (including historical aliases) and the Location
+       Records — so the number offered here is the number the register itself
+       would issue. This page used to scan only its own items when it could not
+       reach the dashboard, which meant every asset added on the register side
+       since the last survey was invisible and the code offered here collided
+       with one already in use. */
+    function nextCodeSeries(deptName) {
+        return window.mphComputeNextCodeSeries(deptName, registerAssets(), db, boardedCodes());
+    }
+    /* Codes the Board of Survey has written off. Their numbers are spent even
+       after the asset leaves the register, so they must never be offered
+       again. */
+    function boardedCodes() {
+        try {
+            if (window.parent && window.parent !== window &&
+                typeof window.parent.getDisposedAssetCodes === 'function') {
+                return [...window.parent.getDisposedAssetCodes()];
+            }
+        } catch (e) { /* not embedded — read our own copy */ }
+        return (window.mphGetDisposalRecordsAny ? window.mphGetDisposalRecordsAny() : [])
+            .map(r => r && r.assetCode).filter(Boolean);
+    }
+    function openSeriesPickModal(id, series) {
+        const rows = series.map(s => `<div class="move-room-row" onclick="applySeriesCode('${id}', '${s.nextCode}')">
+            <span style="flex:1;">${esc(s.group)}${s.desc ? ' — ' + esc(s.desc) : ''}</span>
+            <span style="font-family:monospace; font-weight:700; color:#27ae60;">${esc(s.nextCode)}</span></div>`).join('');
+        document.getElementById('modalBox').innerHTML = `
+            <h3>Assign next code in series</h3>
+            <p class="sub">Pick the item group — the next free number is assigned.</p>
+            <div class="move-modal-list">${rows}</div>
+            <div class="modal-actions"><button class="btn btn-ghost" onclick="closeModal()">Cancel</button></div>`;
+        openModal();
+    }
+    function applySeriesCode(id, code) {
+        const d = getDept(selectedDeptId);
+        const r = getRoom(d, selectedRoomId);
+        const it = r.items.find(x => x.id === id); if (!it) return;
+        const oldCode = it.assetCode;
+        it.assetCode = code;
+        // deliberate placement — see updateItem()
+        if (window.mphUntombstoneLocationItem) window.mphUntombstoneLocationItem(it);
+        queueCodeChange(it, oldCode, code, d, r);
+        save(); closeModal();
+        renderRoom(document.getElementById('content'));
+        growAllCells();
+        toast('Assigned ' + code, 'success');
+    }
+    function deleteItem(id) {
+        const d = getDept(selectedDeptId);
+        const r = getRoom(d, selectedRoomId);
+        const it = (r.items || []).find(x => x.id === id);
+        // This now also removes the asset from the Asset Register (cost,
+        // depreciation and all), so it is no longer a silent one-click action.
+        if (it && it.assetCode && window.mphCodeStillInRecords &&
+            !window.mphCodeStillInRecords({ departments: db.departments.map(dep => ({
+                rooms: (dep.rooms || []).map(rr => ({
+                    items: (rr.items || []).filter(x => x.id !== id) })) })) }, it.assetCode)) {
+            const label = (it.description || it.item || it.assetCode);
+            if (!confirm('Delete "' + label + '" (' + it.assetCode + ')?\n\n' +
+                         'This is the last record of this asset code, so the asset will also be ' +
+                         'DELETED FROM THE ASSET REGISTER — its cost and depreciation leave every ' +
+                         'total and report.\n\nThis cannot be undone.')) return;
+        }
+        doDeleteItem(id, d, r, it);
+    }
+    function doDeleteItem(id, d, r, it) {
+        // Tombstone by row id AND asset code. An id-only tombstone let the
+        // same physical item return under a different id (the seed's, another
+        // device's, a restored backup's) on the very next merge.
+        if (window.mphTombstoneLocationItem) window.mphTombstoneLocationItem(it || { id: id });
+        else if (window.mphAddLocationTombstone) window.mphAddLocationTombstone('items', id);
+        // a deleted item is no longer "placed" anywhere
+        if (it && window.mphForgetLocationMove) window.mphForgetLocationMove(it);
+        r.items = r.items.filter(x => x.id !== id);
+        queueRegisterDelete(it);
+        save(); renderRoom(document.getElementById('content'));
+        growAllCells();
+        renderDeptList();
+    }
+
+    /* ============================================================
+       Move an item to another room/department. Built for emptying the
+       "Register Items — Room Not Yet Assigned" bucket: pick a target
+       room and the item moves there (kept out of the source), and the
+       matching asset in the main register is re-homed to that room too.
+    ============================================================ */
+    let _moveItemId = null;
+    function openMoveItemModal(itemId) {
+        _moveItemId = itemId;
+        const d = getDept(selectedDeptId);
+        const r = getRoom(d, selectedRoomId);
+        const it = r && (r.items || []).find(x => x.id === itemId);
+        if (!it) return;
+        const label = (it.item || it.description || 'item') + (it.assetCode ? ' (' + it.assetCode + ')' : '');
+        document.getElementById('modalBox').innerHTML = `
+            <h3>Move item to a room</h3>
+            <p class="sub">Moving <b>${esc(label)}</b><br>from ${esc(d.name)} › ${esc(r.title)}.</p>
+            <input type="text" id="moveSearch" placeholder="Search departments and rooms..." oninput="renderMoveTargets()"
+                   style="width:100%; padding:9px 12px; border:1px solid var(--border-color); border-radius:8px; font-size:0.85rem;">
+            <div class="move-modal-list" id="moveTargets"></div>
+            <div class="modal-actions"><button class="btn btn-ghost" onclick="closeModal()">Cancel</button></div>`;
+        openModal();
+        renderMoveTargets();
+        setTimeout(() => { const s = document.getElementById('moveSearch'); if (s) s.focus(); }, 50);
+    }
+    function renderMoveTargets() {
+        const box = document.getElementById('moveTargets');
+        if (!box) return;
+        const term = (document.getElementById('moveSearch') || {}).value || '';
+        const t = term.toLowerCase().trim();
+        let html = '';
+        db.departments.forEach(dep => {
+            const isSourceDept = dep.id === selectedDeptId;
+            const rooms = (dep.rooms || []).filter(r =>
+                r.id !== selectedRoomId && !/Room Not Yet Assigned/i.test(r.title || ''));
+            const deptHit = (dep.name || '').toLowerCase().includes(t);
+            const shown = t ? rooms.filter(r => deptHit || (r.title || '').toLowerCase().includes(t)) : rooms;
+            if (t && !deptHit && !shown.length) return;
+            const dn = String(dep.id);
+            html += `<div class="move-dept-row" onclick="moveItemTo('${dn}', '')">
+                <span>${esc(dep.icon || '🏢')}</span><span style="flex:1;">${esc(dep.name)}</span>
+                <span style="font-weight:400; font-size:0.72rem; color:var(--text-secondary,#7078a0);">${rooms.length} room${rooms.length === 1 ? '' : 's'} · move to dept</span></div>`;
+            shown.forEach(r => {
+                html += `<div class="move-room-row" onclick="moveItemTo('${dn}', '${String(r.id)}')">
+                    <span style="flex:1;">${esc(r.title)}</span>
+                    <span style="font-size:0.7rem; color:var(--text-secondary,#7078a0);">${(r.items || []).length} items</span></div>`;
+            });
+            if (!t || deptHit) {
+                html += `<div class="move-opt-row" onclick="moveItemNewRoom('${dn}')">＋ New room…</div>`;
+            }
+        });
+        box.innerHTML = html || '<div style="padding:16px; text-align:center; color:var(--text-secondary,#7078a0); font-size:0.85rem;">No matching room.</div>';
+    }
+    function moveItemNewRoom(deptId) {
+        const title = prompt('New room title:');
+        if (!title || !title.trim()) return;
+        const dep = getDept(deptId);
+        const room = { id: uid('room'), title: title.trim(), verifiedBy: '', dateUpdated: '', note: '', items: [] };
+        dep.rooms.push(room);
+        moveItemTo(deptId, room.id);
+    }
+    function moveItemTo(destDeptId, destRoomId) {
+        const srcDept = getDept(selectedDeptId);
+        const srcRoom = getRoom(srcDept, selectedRoomId);
+        const idx = srcRoom.items.findIndex(x => x.id === _moveItemId);
+        if (idx < 0) { closeModal(); return; }
+        const it = srcRoom.items[idx];
+        const destDept = getDept(destDeptId);
+        let destRoom = destRoomId ? getRoom(destDept, destRoomId) : null;
+        if (!destRoom) {
+            // "move to department" → its register bucket, created if needed
+            const bucketTitle = 'Register Items — Room Not Yet Assigned';
+            destRoom = (destDept.rooms || []).find(r => String(r.title).trim().toLowerCase() === bucketTitle.toLowerCase());
+            if (!destRoom) { destRoom = { id: uid('room'), title: bucketTitle, verifiedBy: '', dateUpdated: '', note: '', items: [] }; destDept.rooms.push(destRoom); }
+        }
+        // remove from source, add to destination (dedupe by code within dest)
+        srcRoom.items.splice(idx, 1);
+        destRoom.items = destRoom.items || [];
+        const key = window.mphCodeKey && it.assetCode ? window.mphCodeKey(it.assetCode) : null;
+        const dup = key && destRoom.items.find(x => window.mphCodeKey(x.assetCode) === key);
+        if (!dup) {
+            destRoom.items.push(it);
+        } else {
+            // same code already there: don't drop the moved row's data —
+            // fill any blank fields on the existing item from the moved one
+            ['item', 'description', 'remarks'].forEach(f => { if (!dup[f] && it[f]) dup[f] = it[f]; });
+        }
+        // Remember the transfer. Without this the next merge of an older copy
+        // of the records (cloud backup, re-applied seed, a peer device) put
+        // the item straight back in the department it just left.
+        if (window.mphUntombstoneLocationItem) window.mphUntombstoneLocationItem(dup || it);
+        if (window.mphRecordLocationMove) {
+            window.mphRecordLocationMove(dup || it, destDept.name, destRoom.title,
+                                         { dept: srcDept.name, room: srcRoom.title });
+        }
+        // Re-home the matching register asset. Queued (not called directly on
+        // the parent) so the transfer also reaches the register when this page
+        // is open on its own, with the dashboard closed.
+        queueRegisterChange({
+            op: 'place',
+            code: (dup || it).assetCode,
+            dept: destDept.name,
+            room: destRoom.title.indexOf('Not Yet Assigned') >= 0 ? '' : destRoom.title,
+            itemId: (dup || it).id,
+            regId: (dup || it).regId || null
+        });
+        save();
+        // apply immediately when embedded, so the register view behind the
+        // frame updates without waiting for a reload
+        try {
+            if (window.parent && window.parent !== window && typeof window.parent.drainLocationRegisterQueue === 'function') {
+                window.parent.drainLocationRegisterQueue();
+            }
+        } catch (e) { /* standalone page: the dashboard drains it on next load */ }
+        closeModal();
+        // Jumping to the destination record: the search that was filtering
+        // the SOURCE room must not follow the item there, or the record you
+        // land in looks empty.
+        deptViewTerm = ''; roomViewTerm = '';
+        selectedDeptId = destDeptId; selectedRoomId = destRoom.id;
+        render(); window.scrollTo(0, 0);
+        growAllCells();
+        toast('Item moved to ' + destDept.name + ' › ' + destRoom.title, 'success');
+    }
+
+    function flashSaved() {
+        const h = document.getElementById('saveHint');
+        if (!h) return;
+        h.textContent = '✓ Saved';
+        h.classList.add('saved');
+        clearTimeout(h._t);
+        h._t = setTimeout(() => { h.textContent = 'All changes save automatically'; h.classList.remove('saved'); }, 1500);
+    }
+
+    /* ============================================================
+       Modal helpers
+    ============================================================ */
+    function openModal() { document.getElementById('modalOverlay').classList.add('open'); }
+    function closeModal() { document.getElementById('modalOverlay').classList.remove('open'); }
+    function confirmModal(title, msg, onYes) {
+        document.getElementById('modalBox').innerHTML = `
+            <h3>${esc(title)}</h3>
+            <p class="sub">${esc(msg)}</p>
+            <div class="modal-actions">
+                <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+                <button class="btn btn-danger" id="confirmYes">Delete</button>
+            </div>`;
+        openModal();
+        document.getElementById('confirmYes').onclick = () => { closeModal(); onYes(); };
+    }
+    document.getElementById('modalOverlay').addEventListener('click', e => {
+        if (e.target.id === 'modalOverlay') closeModal();
+    });
+
+    /* ============================================================
+       PRINT / PREVIEW  (matches the attached PDF form)
+    ============================================================ */
+    // Build one record. `mode` = 'print' (footer via @page counter) or
+    // 'preview' (on-screen page footer text).
+    function recordHtml(dept, room, mode) {
+        const items = (room.items || []);
+        let rows = items.map(it => `
+            <tr>
+                <td>${esc(it.item||'')}</td>
+                <td>${esc(it.description||'')}</td>
+                <td>${esc(it.assetCode||'')}</td>
+                <td>${esc(it.remarks||'')}</td>
+            </tr>`).join('');
+        // Pad with blank rows so the sheet matches the official one-page form
+        const pad = Math.max(0, MIN_PRINT_ROWS - items.length);
+        for (let i = 0; i < pad; i++) {
+            rows += `<tr><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td></tr>`;
+        }
+        const pagefoot = (mode === 'preview') ? '<div class="pr-pagefoot">Page 1 of 1</div>' : '';
+        return `
+        <div class="print-record">
+            <div class="pr-runhead">
+                ${letterheadHtml()}
+                <div class="pr-title">LOCATION RECORD</div>
+                <div class="pr-infobox">
+                    <div class="pr-field"><span class="k">Location:</span> ${esc(dept.name)}</div>
+                    <div class="pr-field"><span class="k">Room Title:</span> ${esc(room.title)}</div>
+                    <div class="pr-field"><span class="k">Verified by and date:</span> ${esc(room.verifiedBy||'')}</div>
+                    <div class="pr-field"><span class="k">Date updated:</span> ${esc(room.dateUpdated||'')}</div>
+                </div>
+            </div>
+            <table class="pr-items">
+                <thead>
+                    <tr>
+                        <th style="width:27.4%">Item</th>
+                        <th style="width:22.6%">Description/Make</th>
+                        <th style="width:22.9%">Asset Code</th>
+                        <th style="width:27.1%">Remarks</th>
+                    </tr>
+                </thead>
+                <tbody>${rows}</tbody>
+            </table>
+            <div class="pr-note"><em>${esc(APPROVAL_NOTE)}</em></div>
+            ${pagefoot}
+        </div>`;
+    }
+
+    // Returns an array of record HTML strings for the given scope.
+    function collectRecordsList(scope, deptId, roomId, mode) {
+        const out = [];
+        if (scope === 'room') {
+            const d = getDept(deptId); const r = getRoom(d, roomId);
+            if (d && r) out.push(recordHtml(d, r, mode));
+        } else if (scope === 'dept') {
+            const d = getDept(deptId);
+            if (d) d.rooms.forEach(r => out.push(recordHtml(d, r, mode)));
+        } else {
+            db.departments.forEach(d => d.rooms.forEach(r => out.push(recordHtml(d, r, mode))));
+        }
+        return out;
+    }
+
+    function printRecords(scope, deptId, roomId) {
+        const recs = collectRecordsList(scope, deptId, roomId, 'print');
+        if (!recs.length) { toast('Nothing to print', 'error'); return; }
+        document.getElementById('printArea').innerHTML = recs.join('');
+        setTimeout(() => window.print(), 60);
+    }
+
+    let previewScope = null, previewArgs = [];
+    function openPreview(scope, deptId, roomId) {
+        previewScope = scope; previewArgs = [deptId, roomId];
+        const scroll = document.getElementById('previewScroll');
+        const title = document.getElementById('previewTitle');
+        const pages = collectPreviewPages(scope, deptId, roomId);
+        if (!pages) { toast('Nothing to preview', 'error'); return; }
+        scroll.innerHTML = pages;
+        title.textContent = scope === 'room' ? 'Live Preview — Room Record'
+                          : scope === 'dept' ? 'Live Preview — ' + (getDept(deptId) ? getDept(deptId).name : 'Department')
+                          : 'Live Preview — All Department Records';
+        document.getElementById('previewOverlay').classList.add('open');
+    }
+    function collectPreviewPages(scope, deptId, roomId) {
+        let pages = [];
+        const wrap = h => `<div class="preview-page">${h}</div>`;
+        if (scope === 'room') {
+            const d = getDept(deptId); const r = getRoom(d, roomId);
+            if (d && r) pages.push(wrap(recordHtml(d, r, 'preview')));
+        } else if (scope === 'dept') {
+            const d = getDept(deptId);
+            if (d) { if (!d.rooms.length) pages.push(wrap('<p style="text-align:center;color:#888;">No rooms in this department yet.</p>')); d.rooms.forEach(r => pages.push(wrap(recordHtml(d, r, 'preview')))); }
+        } else {
+            db.departments.forEach(d => d.rooms.forEach(r => pages.push(wrap(recordHtml(d, r, 'preview')))));
+            if (!pages.length) pages.push(wrap('<p style="text-align:center;color:#888;">No records yet.</p>'));
+        }
+        return pages.join('');
+    }
+    function closePreview() { document.getElementById('previewOverlay').classList.remove('open'); }
+    function printFromPreview() {
+        printRecords(previewScope, previewArgs[0], previewArgs[1]);
+    }
+
+    /* ============================================================
+       Backup / Restore
+    ============================================================ */
+    function exportData() {
+        const blob = new Blob([JSON.stringify(db, null, 2)], { type: 'application/json' });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = 'location-records-backup.json';
+        a.click();
+        URL.revokeObjectURL(a.href);
+        toast('Backup downloaded', 'success');
+    }
+    function importData(e) {
+        const file = e.target.files[0]; if (!file) return;
+        const reader = new FileReader();
+        reader.onload = ev => {
+            try {
+                const data = JSON.parse(ev.target.result);
+                if (!data || !Array.isArray(data.departments)) throw new Error('bad');
+                const roomCount = data.departments.reduce((s, d) => s + (d.rooms ? d.rooms.length : 0), 0);
+                importChoiceModal(data, data.departments.length + ' departments, ' + roomCount + ' rooms');
+            } catch (err) { toast('Invalid backup file', 'error'); }
+        };
+        reader.readAsText(file);
+        e.target.value = '';
+    }
+
+    // Restore dialog: let the user Merge (add without deleting) or Replace.
+    function importChoiceModal(data, summary) {
+        document.getElementById('modalBox').innerHTML = `
+            <h3>Restore from backup</h3>
+            <p class="sub">The file contains ${esc(summary)}.<br><br>
+            <b>Merge</b> adds new departments, rooms and items to your current records — nothing you already have is removed.<br>
+            <b>Replace</b> discards your current records and keeps only the file.</p>
+            <div class="modal-actions">
+                <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+                <button class="btn btn-ghost" id="importReplaceBtn">Replace</button>
+                <button class="btn btn-primary" id="importMergeBtn">Merge</button>
+            </div>`;
+        openModal();
+        document.getElementById('importMergeBtn').onclick = () => {
+            closeModal();
+            const r = mergeIntoDb(data); _reconcileAfterImport(); save(); goHome();
+            toast('Merged: +' + r.addedDepts + ' depts, +' + r.addedRooms + ' rooms, +' + r.addedItems + ' items', 'success');
+        };
+        document.getElementById('importReplaceBtn').onclick = () => {
+            closeModal();
+            // deletions and transfers still hold — a backup file is not a
+            // licence to resurrect what the user removed or un-move what
+            // they transferred
+            db = data; _reconcileAfterImport(); save(); goHome();
+            toast('Records replaced', 'success');
+        };
+    }
+
+    /* ============================================================
+       Merge a backup into the current records without deleting.
+       - Departments are matched by name, rooms by title.
+       - New departments/rooms are added outright (with fresh ids).
+       - For a room present on both sides, items are combined so that
+         each distinct item (item + description + assetCode + remarks)
+         ends up with the larger of the two counts. This preserves the
+         user's own entries, fills in anything missing, keeps legitimate
+         duplicates, and is idempotent (re-importing adds nothing new).
+    ============================================================ */
+    function _itemSig(it) {
+        return [it.item, it.description, it.assetCode, it.remarks]
+            .map(s => String(s == null ? '' : s).trim().toLowerCase()).join('||');
+    }
+    // A restore gives every incoming row a fresh id, so an id-only tombstone
+    // never matched and deleted items walked back in with the backup. Filter
+    // the incoming side through the tombstones (which now also key on the
+    // asset code) before anything is adopted.
+    function _liveIncoming(items) {
+        return (items || []).filter(it =>
+            !(window.mphIsItemTombstoned && window.mphIsItemTombstoned(it)));
+    }
+    // Re-assert deletions and transfers after any restore.
+    function _reconcileAfterImport() {
+        let changed = false;
+        if (window.mphPruneTombstoned) changed = window.mphPruneTombstoned(db) || changed;
+        if (window.mphApplyLocationMoves) changed = window.mphApplyLocationMoves(db) || changed;
+        return changed;
+    }
+    function _countAllItems() {
+        return db.departments.reduce((s, d) => s + d.rooms.reduce((t, r) => t + (r.items ? r.items.length : 0), 0), 0);
+    }
+    function _freshRoom(room) {
+        return {
+            id: uid('room'), title: room.title || '',
+            verifiedBy: room.verifiedBy || '', dateUpdated: room.dateUpdated || '', note: room.note || '',
+            items: _liveIncoming(room.items).map(it => ({
+                id: uid('item'), item: it.item || '', description: it.description || '',
+                assetCode: it.assetCode || '', remarks: it.remarks || ''
+            }))
+        };
+    }
+    function _mergeRoomItems(existingRoom, incomingRoom) {
+        existingRoom.items = existingRoom.items || [];
+        const existingCounts = {};
+        existingRoom.items.forEach(it => { const s = _itemSig(it); existingCounts[s] = (existingCounts[s] || 0) + 1; });
+        const incGroups = {};
+        _liveIncoming(incomingRoom.items).forEach(it => { const s = _itemSig(it); (incGroups[s] = incGroups[s] || []).push(it); });
+        Object.keys(incGroups).forEach(s => {
+            const deficit = incGroups[s].length - (existingCounts[s] || 0);
+            for (let i = 0; i < deficit; i++) {
+                const src = incGroups[s][i];
+                existingRoom.items.push({
+                    id: uid('item'), item: src.item || '', description: src.description || '',
+                    assetCode: src.assetCode || '', remarks: src.remarks || ''
+                });
+            }
+        });
+    }
+    function mergeIntoDb(incoming) {
+        const norm = s => String(s == null ? '' : s).trim().toLowerCase();
+        let addedDepts = 0, addedRooms = 0;
+        const itemsBefore = _countAllItems();
+        (incoming.departments || []).forEach(incDept => {
+            let dept = db.departments.find(d => norm(d.name) === norm(incDept.name));
+            if (!dept) {
+                dept = {
+                    id: uid('dept'), name: incDept.name || '', icon: incDept.icon || '🏢',
+                    location: incDept.location || incDept.name || '', note: incDept.note || '', rooms: []
+                };
+                db.departments.push(dept); addedDepts++;
+            }
+            (incDept.rooms || []).forEach(incRoom => {
+                const room = dept.rooms.find(r => norm(r.title) === norm(incRoom.title));
+                if (!room) { dept.rooms.push(_freshRoom(incRoom)); addedRooms++; }
+                else { _mergeRoomItems(room, incRoom); }
+            });
+        });
+        return { addedDepts, addedRooms, addedItems: _countAllItems() - itemsBefore };
+    }
+    function confirmModalGeneric(title, msg, btnLabel, onYes) {
+        document.getElementById('modalBox').innerHTML = `
+            <h3>${esc(title)}</h3><p class="sub">${esc(msg)}</p>
+            <div class="modal-actions">
+                <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+                <button class="btn btn-primary" id="confirmYes2">${esc(btnLabel)}</button>
+            </div>`;
+        openModal();
+        document.getElementById('confirmYes2').onclick = () => { closeModal(); onYes(); };
+    }
+
+    /* ============================================================
+       Utils
+    ============================================================ */
+    function esc(s) { return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+    function escAttr(s) { return esc(s).replace(/"/g,'&quot;'); }
+    function toast(msg, type, ms) {
+        const t = document.getElementById('toast');
+        t.textContent = msg;
+        t.className = 'toast show ' + (type || '');
+        clearTimeout(t._t);
+        t._t = setTimeout(() => t.className = 'toast', ms || 2200);
+    }
+    document.addEventListener('keydown', e => {
+        if (e.key === 'Escape') { closeModal(); closePreview(); closeLocPicker(); }
+    });
+
+    /* ============================================================
+       Embedded mode (inside index.html) + cross-context freshness
+    ============================================================ */
+    (function () {
+        // Hide navigation that would duplicate the dashboard's own chrome
+        // when this page runs inside the dashboard's Location Records page.
+        let embedded = false;
+        try { embedded = new URLSearchParams(window.location.search).get('embedded') === '1'; } catch (e) {}
+        if (embedded) document.body.classList.add('embedded');
+
+        function applyExternal(d) {
+            if (d && Array.isArray(d.departments)) { db = d; render(); }
+        }
+        function reloadFromStorage() {
+            try {
+                if (window.mphRefreshLocationRecords) {
+                    window.mphRefreshLocationRecords().then(applyExternal);
+                } else {
+                    applyExternal(JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null'));
+                }
+            } catch (e) { /* keep current view */ }
+        }
+        // Another tab or frame saved through the shared store.
+        if (window.mphOnLocationRecordsUpdated) {
+            window.mphOnLocationRecordsUpdated(() => applyExternal(window.mphGetLocationRecordsAny && window.mphGetLocationRecordsAny()));
+        }
+        // Legacy path: another tab still writing records to localStorage.
+        window.addEventListener('storage', e => {
+            if (e.key === STORAGE_KEY && e.newValue) reloadFromStorage();
+        });
+        // The dashboard merged cloud data and asks us to refresh.
+        window.addEventListener('message', e => {
+            if (e.origin !== window.location.origin) return;
+            if (e.data && e.data.type === 'mph-location-records-reload') { reloadFromStorage(); refreshRegisterCache(); }
+        });
+    })();
+
+    /* ============================================================
+       Init — wait for the IndexedDB-backed store (it also migrates any
+       legacy localStorage records on first run), then load + render.
+    ============================================================ */
+    /* Re-flow the record whenever the available width changes: rotating the
+       phone, the on-screen keyboard opening, or the dashboard iframe being
+       resized all rewrap the item cells. Debounced so a drag-resize does not
+       re-measure on every frame. */
+    (function () {
+        let t = null;
+        function reflow() { clearTimeout(t); t = setTimeout(growAllCells, 120); }
+        window.addEventListener('resize', reflow);
+        window.addEventListener('orientationchange', reflow);
+        // Web fonts land after first paint and change the wrap points.
+        if (document.fonts && document.fonts.ready) document.fonts.ready.then(growAllCells).catch(() => {});
+    })();
+
+    function startPage() {
+        load(); render();
+        // Standalone, the register is only reachable by reading its own store.
+        // Load it so the first code lookup already knows every issued number;
+        // the page works either way, it is just better informed once this
+        // resolves.
+        if (window.mphLoadRegisterAssets) {
+            window.mphLoadRegisterAssets().catch(() => {});
+        }
+    }
+    /* The dashboard drained the queue or synced — our register copy is stale. */
+    function refreshRegisterCache() {
+        if (!window.mphInvalidateRegisterAssets || !window.mphLoadRegisterAssets) return;
+        window.mphInvalidateRegisterAssets();
+        window.mphLoadRegisterAssets().catch(() => {});
+    }
+    if (window.mphLocationStoreReady && typeof window.mphLocationStoreReady.then === 'function') {
+        window.mphLocationStoreReady.then(startPage);
+    } else {
+        startPage();
+    }
+    </script>
+</body>
+</html>
